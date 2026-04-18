@@ -1,0 +1,17 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <AssemblyName>WebBundler.MSBuild</AssemblyName>
+    <RootNamespace>WebBundler.MSBuild</RootNamespace>
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
+    <IsPackable>true</IsPackable>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\WebBundler.Core\WebBundler.Core.csproj" />
+    <ProjectReference Include="..\WebBundler.Configuration\WebBundler.Configuration.csproj" />
+    <ProjectReference Include="..\WebBundler.Minification\WebBundler.Minification.csproj" />
+    <ProjectReference Include="..\WebBundler.Fingerprinting\WebBundler.Fingerprinting.csproj" />
+    <PackageReference Include="Microsoft.Build.Framework" />
+    <PackageReference Include="Microsoft.Build.Utilities.Core" />
+    <None Include="WebBundler.MSBuild.targets" Pack="true" PackagePath="buildTransitive\" />
+  </ItemGroup>
+</Project>

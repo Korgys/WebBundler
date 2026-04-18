@@ -1,0 +1,23 @@
+{
+  "version": 1,
+  "bundles": [
+    {
+      "output": "wwwroot/dist/site.min.css",
+      "inputs": [
+        "wwwroot/css/base.css",
+        "wwwroot/css/app.css"
+      ],
+      "type": "css",
+      "minify": true
+    },
+    {
+      "output": "wwwroot/dist/site.min.js",
+      "inputs": [
+        "wwwroot/js/vendor/*.js",
+        "wwwroot/js/app.js"
+      ],
+      "type": "js",
+      "minify": true
+    }
+  ]
+}

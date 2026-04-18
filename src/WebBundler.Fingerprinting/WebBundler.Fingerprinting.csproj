@@ -1,0 +1,11 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <AssemblyName>WebBundler.Fingerprinting</AssemblyName>
+    <RootNamespace>WebBundler.Fingerprinting</RootNamespace>
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
+    <IsPackable>true</IsPackable>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\WebBundler.Core\WebBundler.Core.csproj" />
+  </ItemGroup>
+</Project>

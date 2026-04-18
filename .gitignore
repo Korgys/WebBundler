@@ -1,0 +1,14 @@
+bin/
+obj/
+.vs/
+.idea/
+TestResults/
+*.user
+*.suo
+*.cache
+*.log
+*.vspscc
+*.vssscc
+packages/
+artifacts/
+publish/

@@ -1,0 +1,17 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <AssemblyName>webbundler</AssemblyName>
+    <RootNamespace>WebBundler.Tool</RootNamespace>
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
+    <IsPackable>true</IsPackable>
+    <PackAsTool>true</PackAsTool>
+    <ToolCommandName>webbundler</ToolCommandName>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\WebBundler.Core\WebBundler.Core.csproj" />
+    <ProjectReference Include="..\WebBundler.Configuration\WebBundler.Configuration.csproj" />
+    <ProjectReference Include="..\WebBundler.Minification\WebBundler.Minification.csproj" />
+    <ProjectReference Include="..\WebBundler.Fingerprinting\WebBundler.Fingerprinting.csproj" />
+  </ItemGroup>
+</Project>

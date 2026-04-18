@@ -1,0 +1,13 @@
+<Project>
+  <UsingTask TaskName="WebBundler.MSBuild.WebBundlerTask" AssemblyFile="$(MSBuildThisFileDirectory)WebBundler.MSBuild.dll" />
+  <PropertyGroup>
+    <WebBundlerConfigFile Condition="'$(WebBundlerConfigFile)' == ''">$(MSBuildProjectDirectory)\bundleconfig.json</WebBundlerConfigFile>
+  </PropertyGroup>
+  <Target Name="WebBundlerBuild" BeforeTargets="BeforeBuild;BeforePublish" Condition="'$(WebBundlerEnabled)' != 'false'">
+    <WebBundlerTask
+      ProjectDirectory="$(MSBuildProjectDirectory)"
+      ConfigurationFile="$(WebBundlerConfigFile)"
+      WriteOutputs="true"
+      EnableFingerprinting="$(WebBundlerEnableFingerprinting)" />
+  </Target>
+</Project>
