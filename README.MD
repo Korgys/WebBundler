@@ -129,13 +129,3 @@ The build target looks for `bundleconfig.json` in the project directory by defau
 - `check` validates configuration and asset inputs without writing files.
 
 See `docs/cli.md` and `docs/msbuild.md` for more examples.
-
-## Technologies utilisées
-
-- .NET 10
-- C#
-- MSBuild
-- MSTest
-- coverlet
-- GitHub Actions
-- SonarCloud
