@@ -1,12 +1,13 @@
 using WebBundler.Core;
 using WebBundler.Minification;
-using Xunit;
+using Microsoft.VisualStudio.TestTools.UnitTesting;
 
 namespace WebBundler.Core.Tests;
 
+[TestClass]
 public sealed class BundleBuildServiceTests
 {
-    [Fact]
+    [TestMethod]
     public void BuildsCssAndJsBundlesInDeclaredOrder()
     {
         using var workspace = new TestWorkspace();
@@ -34,18 +35,18 @@ public sealed class BundleBuildServiceTests
                 }
             ]));
 
-        Assert.True(result.Succeeded);
-        Assert.Equal(2, result.Outputs.Count);
-        Assert.Equal(Path.GetFullPath(Path.Combine(workspace.Root, "wwwroot/dist/site.min.css")), result.Outputs[0].OutputPath);
-        Assert.Equal(Path.GetFullPath(Path.Combine(workspace.Root, "wwwroot/dist/site.min.js")), result.Outputs[1].OutputPath);
+        Assert.IsTrue(result.Succeeded);
+        Assert.HasCount(2, result.Outputs);
+        Assert.AreEqual(Path.GetFullPath(Path.Combine(workspace.Root, "wwwroot/dist/site.min.css")), result.Outputs[0].OutputPath);
+        Assert.AreEqual(Path.GetFullPath(Path.Combine(workspace.Root, "wwwroot/dist/site.min.js")), result.Outputs[1].OutputPath);
         var css = File.ReadAllText(Path.Combine(workspace.Root, "wwwroot/dist/site.min.css"));
-        Assert.Contains("body{margin:0}", css);
-        Assert.Contains("h1{color:red}", css);
-        Assert.Contains("window.a = 1;", File.ReadAllText(Path.Combine(workspace.Root, "wwwroot/dist/site.min.js")));
-        Assert.Contains("window.b = 2;", File.ReadAllText(Path.Combine(workspace.Root, "wwwroot/dist/site.min.js")));
+        StringAssert.Contains(css, "body{margin:0}");
+        StringAssert.Contains(css, "h1{color:red}");
+        StringAssert.Contains(File.ReadAllText(Path.Combine(workspace.Root, "wwwroot/dist/site.min.js")), "window.a = 1;");
+        StringAssert.Contains(File.ReadAllText(Path.Combine(workspace.Root, "wwwroot/dist/site.min.js")), "window.b = 2;");
     }
 
-    [Fact]
+    [TestMethod]
     public void WildcardsResolveDeterministically()
     {
         using var workspace = new TestWorkspace();
@@ -65,15 +66,15 @@ public sealed class BundleBuildServiceTests
                 }
             ]));
 
-        Assert.True(result.Succeeded);
+        Assert.IsTrue(result.Succeeded);
         var output = File.ReadAllText(Path.Combine(workspace.Root, "dist/site.js"));
         var first = output.IndexOf("window.a", StringComparison.Ordinal);
         var second = output.IndexOf("window.b", StringComparison.Ordinal);
         var third = output.IndexOf("window.c", StringComparison.Ordinal);
-        Assert.True(first < second && second < third);
+        Assert.IsTrue(first < second && second < third);
     }
 
-    [Fact]
+    [TestMethod]
     public void MissingInputsProduceAnError()
     {
         using var workspace = new TestWorkspace();
@@ -92,11 +93,11 @@ public sealed class BundleBuildServiceTests
             ],
             WriteOutputs: false));
 
-        Assert.False(result.Succeeded);
-        Assert.Contains(result.Messages, message => message.Severity == BuildSeverity.Error);
+        Assert.IsFalse(result.Succeeded);
+        Assert.IsTrue(result.Messages.Any(message => message.Severity == BuildSeverity.Error));
     }
 
-    [Fact]
+    [TestMethod]
     public void BuildIsDeterministicAcrossRuns()
     {
         using var workspace = new TestWorkspace();
@@ -117,9 +118,32 @@ public sealed class BundleBuildServiceTests
         var first = service.Build(request);
         var second = service.Build(request);
 
-        Assert.True(first.Succeeded);
-        Assert.True(second.Succeeded);
-        Assert.Equal(first.Outputs[0].ContentHash, second.Outputs[0].ContentHash);
+        Assert.IsTrue(first.Succeeded);
+        Assert.IsTrue(second.Succeeded);
+        Assert.AreEqual(first.Outputs[0].ContentHash, second.Outputs[0].ContentHash);
+    }
+
+    [TestMethod]
+    public void ReturnsAnErrorWhenMinifyingWithoutARegisteredMinifier()
+    {
+        using var workspace = new TestWorkspace();
+        workspace.Write("assets/site.js", "window.site = true;");
+
+        var service = new BundleBuildService(Array.Empty<IAssetMinifier>(), fileSystem: new PhysicalAssetFileSystem());
+        var result = service.Build(new BundleBuildRequest(
+            new BuildContext(workspace.Root),
+            [
+                new AssetBundleDefinition
+                {
+                    Output = "dist/site.js",
+                    Inputs = ["assets/site.js"],
+                    Type = BundleType.JavaScript
+                }
+            ],
+            WriteOutputs: false));
+
+        Assert.IsFalse(result.Succeeded);
+        Assert.IsTrue(result.Messages.Any(message => message.Severity == BuildSeverity.Error));
     }
 
     private sealed class TestWorkspace : IDisposable

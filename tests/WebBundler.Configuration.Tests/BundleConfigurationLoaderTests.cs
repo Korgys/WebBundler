@@ -1,12 +1,13 @@
 using WebBundler.Configuration;
 using WebBundler.Core;
-using Xunit;
+using Microsoft.VisualStudio.TestTools.UnitTesting;
 
 namespace WebBundler.Configuration.Tests;
 
+[TestClass]
 public sealed class BundleConfigurationLoaderTests
 {
-    [Fact]
+    [TestMethod]
     public void LoadsConfigurationDocument()
     {
         using var workspace = new TestWorkspace();
@@ -29,14 +30,14 @@ public sealed class BundleConfigurationLoaderTests
         var loader = new BundleConfigurationLoader();
         var result = loader.Load(path);
 
-        Assert.True(result.Succeeded);
-        Assert.NotNull(result.Configuration);
-        Assert.Equal(1, result.Configuration!.Version);
-        Assert.Single(result.Configuration.Bundles);
-        Assert.Equal(BundleType.Css, result.Configuration.Bundles[0].Type);
+        Assert.IsTrue(result.Succeeded);
+        Assert.IsNotNull(result.Configuration);
+        Assert.AreEqual(1, result.Configuration!.Version);
+        Assert.HasCount(1, result.Configuration.Bundles);
+        Assert.AreEqual(BundleType.Css, result.Configuration.Bundles[0].Type);
     }
 
-    [Fact]
+    [TestMethod]
     public void ReportsInvalidJson()
     {
         using var workspace = new TestWorkspace();
@@ -45,8 +46,18 @@ public sealed class BundleConfigurationLoaderTests
         var loader = new BundleConfigurationLoader();
         var result = loader.Load(path);
 
-        Assert.False(result.Succeeded);
-        Assert.Contains(result.Messages, message => message.Severity == BuildSeverity.Error);
+        Assert.IsFalse(result.Succeeded);
+        Assert.IsTrue(result.Messages.Any(message => message.Severity == BuildSeverity.Error));
+    }
+
+    [TestMethod]
+    public void ReportsMissingConfigurationFile()
+    {
+        var loader = new BundleConfigurationLoader();
+        var result = loader.Load(Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString("N"), "bundleconfig.json"));
+
+        Assert.IsFalse(result.Succeeded);
+        Assert.IsTrue(result.Messages.Any(message => message.Severity == BuildSeverity.Error));
     }
 
     private sealed class TestWorkspace : IDisposable

@@ -1,12 +1,13 @@
 using WebBundler.Configuration;
 using WebBundler.Core;
-using Xunit;
+using Microsoft.VisualStudio.TestTools.UnitTesting;
 
 namespace WebBundler.Configuration.Tests;
 
+[TestClass]
 public sealed class BundleConfigurationValidatorTests
 {
-    [Fact]
+    [TestMethod]
     public void AcceptsAValidConfiguration()
     {
         var validator = new BundleConfigurationValidator();
@@ -24,10 +25,10 @@ public sealed class BundleConfigurationValidatorTests
             ]
         });
 
-        Assert.True(result.IsValid);
+        Assert.IsTrue(result.IsValid);
     }
 
-    [Fact]
+    [TestMethod]
     public void RejectsDuplicateOutputs()
     {
         var validator = new BundleConfigurationValidator();
@@ -51,7 +52,21 @@ public sealed class BundleConfigurationValidatorTests
             ]
         });
 
-        Assert.False(result.IsValid);
-        Assert.Contains(result.Messages, message => message.Severity == BuildSeverity.Error);
+        Assert.IsFalse(result.IsValid);
+        Assert.IsTrue(result.Messages.Any(message => message.Severity == BuildSeverity.Error));
+    }
+
+    [TestMethod]
+    public void RejectsEmptyBundleCollections()
+    {
+        var validator = new BundleConfigurationValidator();
+        var result = validator.Validate(new BundleConfigurationDocument
+        {
+            Version = 1,
+            Bundles = []
+        });
+
+        Assert.IsFalse(result.IsValid);
+        Assert.IsTrue(result.Messages.Any(message => message.Severity == BuildSeverity.Error));
     }
 }

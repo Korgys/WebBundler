@@ -1,11 +1,12 @@
 using WebBundler.Tool;
-using Xunit;
+using Microsoft.VisualStudio.TestTools.UnitTesting;
 
 namespace WebBundler.IntegrationTests;
 
+[TestClass]
 public sealed class CliIntegrationTests
 {
-    [Fact]
+    [TestMethod]
     public void BuildCommandWritesOutputsForSampleAssets()
     {
         using var workspace = new SampleWorkspace("RazorSample");
@@ -13,12 +14,12 @@ public sealed class CliIntegrationTests
 
         var exitCode = cli.Run(["build", "--config", workspace.BundleConfigPath], new StringWriter(), new StringWriter());
 
-        Assert.Equal(0, exitCode);
-        Assert.True(File.Exists(Path.Combine(workspace.Root, "wwwroot/dist/site.min.css")));
-        Assert.True(File.Exists(Path.Combine(workspace.Root, "wwwroot/dist/site.min.js")));
+        Assert.AreEqual(0, exitCode);
+        Assert.IsTrue(File.Exists(Path.Combine(workspace.Root, "wwwroot/dist/site.min.css")));
+        Assert.IsTrue(File.Exists(Path.Combine(workspace.Root, "wwwroot/dist/site.min.js")));
     }
 
-    [Fact]
+    [TestMethod]
     public void ValidateCommandDoesNotWriteOutputs()
     {
         using var workspace = new SampleWorkspace("AspNetMvcSample");
@@ -26,12 +27,12 @@ public sealed class CliIntegrationTests
 
         var exitCode = cli.Run(["validate", "--config", workspace.BundleConfigPath], new StringWriter(), new StringWriter());
 
-        Assert.Equal(0, exitCode);
-        Assert.False(File.Exists(Path.Combine(workspace.Root, "wwwroot/dist/site.min.css")));
-        Assert.False(File.Exists(Path.Combine(workspace.Root, "wwwroot/dist/site.min.js")));
+        Assert.AreEqual(0, exitCode);
+        Assert.IsFalse(File.Exists(Path.Combine(workspace.Root, "wwwroot/dist/site.min.css")));
+        Assert.IsFalse(File.Exists(Path.Combine(workspace.Root, "wwwroot/dist/site.min.js")));
     }
 
-    [Fact]
+    [TestMethod]
     public void CheckCommandDoesNotWriteOutputs()
     {
         using var workspace = new SampleWorkspace("AspNetMvcSample");
@@ -39,12 +40,12 @@ public sealed class CliIntegrationTests
 
         var exitCode = cli.Run(["check", "--config", workspace.BundleConfigPath], new StringWriter(), new StringWriter());
 
-        Assert.Equal(0, exitCode);
-        Assert.False(File.Exists(Path.Combine(workspace.Root, "wwwroot/dist/site.min.css")));
-        Assert.False(File.Exists(Path.Combine(workspace.Root, "wwwroot/dist/site.min.js")));
+        Assert.AreEqual(0, exitCode);
+        Assert.IsFalse(File.Exists(Path.Combine(workspace.Root, "wwwroot/dist/site.min.css")));
+        Assert.IsFalse(File.Exists(Path.Combine(workspace.Root, "wwwroot/dist/site.min.js")));
     }
 
-    [Fact]
+    [TestMethod]
     public void CheckCommandReturnsBuildFailureForMissingInputs()
     {
         using var workspace = new SampleWorkspace("AspNetMvcSample");
@@ -67,17 +68,17 @@ public sealed class CliIntegrationTests
         var cli = new CliApplication();
         var exitCode = cli.Run(["check", "--config", workspace.BundleConfigPath], new StringWriter(), new StringWriter());
 
-        Assert.Equal(3, exitCode);
-        Assert.False(File.Exists(Path.Combine(workspace.Root, "wwwroot/dist/site.min.css")));
+        Assert.AreEqual(3, exitCode);
+        Assert.IsFalse(File.Exists(Path.Combine(workspace.Root, "wwwroot/dist/site.min.css")));
     }
 
-    [Fact]
+    [TestMethod]
     public void MissingConfigurationReturnsNonZeroExitCode()
     {
         var cli = new CliApplication();
         var exitCode = cli.Run(["build", "--config", Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString("N"), "bundleconfig.json")], new StringWriter(), new StringWriter());
 
-        Assert.Equal(2, exitCode);
+        Assert.AreEqual(2, exitCode);
     }
 
     private sealed class SampleWorkspace : IDisposable
