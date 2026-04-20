@@ -1,6 +1,7 @@
+using System.Text;
+using Microsoft.VisualStudio.TestTools.UnitTesting;
 using WebBundler.Configuration;
 using WebBundler.Core;
-using Microsoft.VisualStudio.TestTools.UnitTesting;
 
 namespace WebBundler.Configuration.Tests;
 
@@ -104,6 +105,34 @@ public sealed class BundleConfigurationLoaderTests
 
         Assert.IsFalse(result.Succeeded);
         Assert.IsTrue(result.Messages.Any(message => message.Severity == BuildSeverity.Error));
+    }
+
+    [TestMethod]
+    public void LoadsUtf8ConfigurationWithBomAndUnicodeContent()
+    {
+        var path = Path.Combine(Path.GetTempPath(), "WebBundler.Tests", Guid.NewGuid().ToString("N"), "bundleconfig.json");
+        Directory.CreateDirectory(Path.GetDirectoryName(path)!);
+
+        var json = "{\n" +
+            "  \"version\": 1,\n" +
+            "  \"bundles\": [\n" +
+            "    {\n" +
+            "      \"output\": \"wwwroot/dist/\u00fcber.site.css\",\n" +
+            "      \"inputs\": [ \"wwwroot/css/ma\u00f1ana.css\" ],\n" +
+            "      \"type\": \"css\",\n" +
+            "      \"minify\": true\n" +
+            "    }\n" +
+            "  ]\n" +
+            "}\n";
+
+        File.WriteAllText(path, json, new UTF8Encoding(encoderShouldEmitUTF8Identifier: true));
+
+        var loader = new BundleConfigurationLoader();
+        var result = loader.Load(path);
+
+        Assert.IsTrue(result.Succeeded);
+        Assert.AreEqual("wwwroot/dist/\u00fcber.site.css", result.Configuration!.Bundles[0].Output);
+        Assert.AreEqual("wwwroot/css/ma\u00f1ana.css", result.Configuration.Bundles[0].Inputs[0]);
     }
 
     private sealed class TestWorkspace : IDisposable

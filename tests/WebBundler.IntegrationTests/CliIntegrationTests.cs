@@ -1,5 +1,6 @@
 using WebBundler.Tool;
-using Microsoft.VisualStudio.TestTools.UnitTesting;
+using System.Security.Cryptography;
+using System.Text;
 
 namespace WebBundler.IntegrationTests;
 
@@ -16,7 +17,13 @@ public sealed class CliIntegrationTests
 
         Assert.AreEqual(0, exitCode);
         Assert.IsTrue(File.Exists(Path.Combine(workspace.Root, "wwwroot/dist/site.min.css")));
-        Assert.IsNotEmpty(Directory.GetFiles(Path.Combine(workspace.Root, "wwwroot/dist"), "site.min.*.js"));
+        var fingerprintedFiles = Directory.GetFiles(Path.Combine(workspace.Root, "wwwroot/dist"), "site.min.*.js");
+        Assert.HasCount(1, fingerprintedFiles);
+
+        var fingerprintedPath = fingerprintedFiles[0];
+        var fingerprintedContent = File.ReadAllText(fingerprintedPath);
+        var expectedFingerprint = Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(fingerprintedContent))).ToLowerInvariant()[..8];
+        Assert.AreEqual($"site.min.{expectedFingerprint}.js", Path.GetFileName(fingerprintedPath));
     }
 
     [TestMethod]

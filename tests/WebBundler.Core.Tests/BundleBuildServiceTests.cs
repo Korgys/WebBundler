@@ -125,6 +125,72 @@ public sealed class BundleBuildServiceTests
     }
 
     [TestMethod]
+    public void SupportsNestedBundlesAndRecursiveGlobsWithWindowsStyleSeparators()
+    {
+        using var workspace = new TestWorkspace();
+        workspace.Write("assets/vendor/root.js", "window.root = true;\n");
+        workspace.Write("assets/vendor/nested/deep.js", "window.deep = true;\n");
+        workspace.Write("assets/app.js", "window.app = true;\n");
+
+        var service = new BundleBuildService(DefaultAssetMinifiers.Create(), fileSystem: new PhysicalAssetFileSystem());
+        var result = service.Build(new BundleBuildRequest(
+            new BuildContext(workspace.Root),
+            [
+                new AssetBundleDefinition
+                {
+                    Output = "dist/vendor.bundle.js",
+                    Inputs = [@"assets\vendor\*.js", "assets/vendor/**/*.js"],
+                    Type = BundleType.JavaScript,
+                    Minify = false
+                },
+                new AssetBundleDefinition
+                {
+                    Output = "dist/app.bundle.js",
+                    Inputs = ["dist/vendor.bundle.js", @"assets\app.js"],
+                    Type = BundleType.JavaScript,
+                    Minify = false
+                }
+            ]));
+
+        Assert.IsTrue(result.Succeeded);
+        Assert.HasCount(2, result.Outputs);
+        Assert.AreEqual(Path.GetFullPath(Path.Combine(workspace.Root, "dist/vendor.bundle.js")), result.Outputs[0].OutputPath);
+        Assert.AreEqual(Path.GetFullPath(Path.Combine(workspace.Root, "dist/app.bundle.js")), result.Outputs[1].OutputPath);
+        Assert.HasCount(2, result.Outputs[0].SourceFiles);
+        Assert.AreEqual(Path.GetFullPath(Path.Combine(workspace.Root, "assets/vendor/root.js")), result.Outputs[0].SourceFiles[0]);
+        Assert.AreEqual(Path.GetFullPath(Path.Combine(workspace.Root, "assets/vendor/nested/deep.js")), result.Outputs[0].SourceFiles[1]);
+        StringAssert.Contains(File.ReadAllText(Path.Combine(workspace.Root, "dist/vendor.bundle.js")), "window.root = true;");
+        StringAssert.Contains(File.ReadAllText(Path.Combine(workspace.Root, "dist/vendor.bundle.js")), "window.deep = true;");
+        StringAssert.Contains(File.ReadAllText(Path.Combine(workspace.Root, "dist/app.bundle.js")), "window.app = true;");
+        StringAssert.Contains(File.ReadAllText(Path.Combine(workspace.Root, "dist/app.bundle.js")), "window.root = true;");
+    }
+
+    [TestMethod]
+    public void HandlesLargeInputsWithoutChangingContent()
+    {
+        using var workspace = new TestWorkspace();
+        var largeContent = new string('a', 1_000_000);
+        workspace.Write("assets/large.css", largeContent);
+
+        var service = new BundleBuildService(DefaultAssetMinifiers.Create(), fileSystem: new PhysicalAssetFileSystem());
+        var result = service.Build(new BundleBuildRequest(
+            new BuildContext(workspace.Root),
+            [
+                new AssetBundleDefinition
+                {
+                    Output = "dist/large.css",
+                    Inputs = ["assets/large.css"],
+                    Type = BundleType.Css,
+                    Minify = false
+                }
+        ]));
+
+        Assert.IsTrue(result.Succeeded);
+        Assert.AreEqual((long)largeContent.Length, result.Outputs[0].Length);
+        Assert.AreEqual(largeContent, File.ReadAllText(Path.Combine(workspace.Root, "dist/large.css")));
+    }
+
+    [TestMethod]
     public void ReturnsAnErrorWhenMinifyingWithoutARegisteredMinifier()
     {
         using var workspace = new TestWorkspace();
@@ -190,7 +256,7 @@ public sealed class BundleBuildServiceTests
                 },
                 new AssetBundleDefinition
                 {
-                    Output = Path.Combine("dist", ".", "site.css"),
+                    Output = Path.Combine("dist", "..", "dist", "site.css"),
                     Inputs = ["assets/a.css"],
                     Type = BundleType.Css
                 }

@@ -1,6 +1,3 @@
-using Microsoft.VisualStudio.TestTools.UnitTesting;
-using WebBundler.Minification;
-
 namespace WebBundler.Minification.Tests;
 
 [TestClass]
@@ -28,5 +25,26 @@ public sealed class CssAssetMinifierTests
         var minifier = new CssAssetMinifier();
 
         Assert.AreEqual(string.Empty, minifier.Minify("   \r\n\t"));
+    }
+
+    [TestMethod]
+    public void MinifiesRealWorldCssWithoutBreakingMediaQueries()
+    {
+        var minifier = new CssAssetMinifier();
+
+        var result = minifier.Minify("""
+            /* app shell */
+            @media screen and (min-width: 800px) {
+                .hero,
+                .hero--featured {
+                    background-image: url("/images/hero.png");
+                    padding: 0 16px;
+                }
+            }
+            """);
+
+        Assert.AreEqual(
+            "@media screen and (min-width:800px){.hero,.hero--featured{background-image:url(\"/images/hero.png\");padding:0 16px}}",
+            result);
     }
 }
