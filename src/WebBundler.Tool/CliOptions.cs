@@ -9,5 +9,6 @@ public enum CliCommand
 {
     Build,
     Validate,
+    Check,
     Help
 }

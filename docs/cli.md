@@ -6,6 +6,7 @@ The CLI command is `webbundler`.
 
 ```bash
 webbundler build --config bundleconfig.json
+webbundler check --config bundleconfig.json
 webbundler validate --config bundleconfig.json
 ```
 
@@ -23,7 +24,9 @@ webbundler validate --config bundleconfig.json
 - output is deterministic and scriptable
 - console messages are intended for CI logs
 
-## Planned commands
+## Command Summary
 
-- `webbundler check`
-- `webbundler clean`
+- `build` writes output files.
+- `check` validates configuration and resolves bundle inputs without writing files.
+- `validate` checks configuration structure only.
+- `clean` is planned for later.

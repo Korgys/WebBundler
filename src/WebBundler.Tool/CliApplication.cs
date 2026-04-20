@@ -46,6 +46,11 @@ public sealed class CliApplication
             return 2;
         }
 
+        if (options.Command == CliCommand.Validate)
+        {
+            return 0;
+        }
+
         var fingerprinter = new Sha256AssetFingerprinter();
         var buildService = new BundleBuildService(DefaultAssetMinifiers.Create(), fingerprinter);
         var buildResult = buildService.Build(
@@ -76,7 +81,7 @@ public sealed class CliApplication
             return true;
         }
 
-        if (command is not ("build" or "validate" or "help"))
+        if (command is not ("build" or "validate" or "check" or "help"))
         {
             parseError = $"Unknown command '{args[0]}'.";
             return false;
@@ -117,6 +122,7 @@ public sealed class CliApplication
         {
             "build" => CliCommand.Build,
             "validate" => CliCommand.Validate,
+            "check" => CliCommand.Check,
             _ => CliCommand.Help
         };
 
@@ -141,10 +147,12 @@ public sealed class CliApplication
         writer.WriteLine("Usage:");
         writer.WriteLine("  webbundler build [--config <path>]");
         writer.WriteLine("  webbundler validate [--config <path>]");
+        writer.WriteLine("  webbundler check [--config <path>]");
         writer.WriteLine();
         writer.WriteLine("Commands:");
         writer.WriteLine("  build      Build bundles and write output files.");
         writer.WriteLine("  validate   Validate configuration and bundle inputs without writing files.");
+        writer.WriteLine("  check      Validate configuration and resolve bundle inputs without writing files.");
         writer.WriteLine();
         writer.WriteLine("Options:");
         writer.WriteLine("  -c, --config <path>  Path to bundleconfig.json.");

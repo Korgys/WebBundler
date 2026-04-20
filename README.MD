@@ -61,7 +61,7 @@ If your project is heavily frontend-driven, a dedicated JavaScript toolchain is 
 
 ## Features
 
-Planned features include:
+Current capabilities include:
 
 - CSS bundling
 - JavaScript bundling
@@ -73,9 +73,9 @@ Planned features include:
 - CI/CD support
 - wildcard/glob input support
 - configuration validation
+- `check` mode for CI
 - fingerprinting
 - manifest generation
-- `check` mode for CI
 - source maps
 - support for additional asset-related scenarios
 
@@ -92,4 +92,38 @@ WebBundler follows a few key principles:
 
 ## Installation
 
-> Coming soon
+### CLI
+
+Install the tool from NuGet:
+
+```bash
+dotnet tool install --global WebBundler.Tool
+```
+
+Run it from the project root:
+
+```bash
+webbundler build --config bundleconfig.json
+webbundler check --config bundleconfig.json
+webbundler validate --config bundleconfig.json
+```
+
+### MSBuild
+
+Add the package to a web project:
+
+```xml
+<ItemGroup>
+  <PackageReference Include="WebBundler.MSBuild" Version="x.y.z" PrivateAssets="all" />
+</ItemGroup>
+```
+
+The build target looks for `bundleconfig.json` in the project directory by default.
+
+## Usage
+
+- `build` writes bundled output files.
+- `validate` checks configuration structure only.
+- `check` validates configuration and asset inputs without writing files.
+
+See `docs/cli.md` and `docs/msbuild.md` for more examples.

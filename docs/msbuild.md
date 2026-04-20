@@ -11,13 +11,28 @@
 
 ## Basic usage
 
-Import the target file and point it at `bundleconfig.json`.
+Add the package and let the transitive target run automatically:
+
+```xml
+<ItemGroup>
+  <PackageReference Include="WebBundler.MSBuild" Version="x.y.z" PrivateAssets="all" />
+</ItemGroup>
+```
+
+By default the target reads `bundleconfig.json` from the project directory.
+
+Optional properties:
+
+- `WebBundlerConfigFile` overrides the config path.
+- `WebBundlerEnabled=false` disables the target.
+- `WebBundlerEnableFingerprinting=true` turns on fingerprinting.
 
 ## Behavior
 
 - validates configuration before building
 - resolves inputs from the project directory
 - writes outputs during build
+- supports dry-run behavior through the shared build service
 - can be extended later for fingerprinting and manifests
 
 ## Design note

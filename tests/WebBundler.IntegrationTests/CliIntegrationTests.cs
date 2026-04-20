@@ -32,6 +32,46 @@ public sealed class CliIntegrationTests
     }
 
     [Fact]
+    public void CheckCommandDoesNotWriteOutputs()
+    {
+        using var workspace = new SampleWorkspace("AspNetMvcSample");
+        var cli = new CliApplication();
+
+        var exitCode = cli.Run(["check", "--config", workspace.BundleConfigPath], new StringWriter(), new StringWriter());
+
+        Assert.Equal(0, exitCode);
+        Assert.False(File.Exists(Path.Combine(workspace.Root, "wwwroot/dist/site.min.css")));
+        Assert.False(File.Exists(Path.Combine(workspace.Root, "wwwroot/dist/site.min.js")));
+    }
+
+    [Fact]
+    public void CheckCommandReturnsBuildFailureForMissingInputs()
+    {
+        using var workspace = new SampleWorkspace("AspNetMvcSample");
+        File.WriteAllText(
+            workspace.BundleConfigPath,
+            """
+            {
+              "version": 1,
+              "bundles": [
+                {
+                  "output": "wwwroot/dist/site.min.css",
+                  "inputs": [ "wwwroot/css/missing.css" ],
+                  "type": "css",
+                  "minify": true
+                }
+              ]
+            }
+            """);
+
+        var cli = new CliApplication();
+        var exitCode = cli.Run(["check", "--config", workspace.BundleConfigPath], new StringWriter(), new StringWriter());
+
+        Assert.Equal(3, exitCode);
+        Assert.False(File.Exists(Path.Combine(workspace.Root, "wwwroot/dist/site.min.css")));
+    }
+
+    [Fact]
     public void MissingConfigurationReturnsNonZeroExitCode()
     {
         var cli = new CliApplication();

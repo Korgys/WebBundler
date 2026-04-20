@@ -3,6 +3,7 @@
     <OutputType>Exe</OutputType>
     <AssemblyName>webbundler</AssemblyName>
     <RootNamespace>WebBundler.Tool</RootNamespace>
+    <PackageId>WebBundler.Tool</PackageId>
     <GenerateDocumentationFile>true</GenerateDocumentationFile>
     <IsPackable>true</IsPackable>
     <PackAsTool>true</PackAsTool>

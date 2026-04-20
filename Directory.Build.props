@@ -8,4 +8,19 @@
     <AnalysisLevel>latest</AnalysisLevel>
     <NoWarn>$(NoWarn);1591</NoWarn>
   </PropertyGroup>
+  <PropertyGroup Condition="'$(IsPackable)' == 'true'">
+    <Authors>Korgys</Authors>
+    <Company>Korgys</Company>
+    <Product>WebBundler</Product>
+    <Description>Lightweight bundling and minification for .NET web projects without JavaScript toolchains.</Description>
+    <PackageTags>dotnet;bundling;minification;msbuild;cli;css;javascript</PackageTags>
+    <PackageLicenseExpression>MIT</PackageLicenseExpression>
+    <PackageProjectUrl>https://github.com/Korgys/WebBundler</PackageProjectUrl>
+    <RepositoryUrl>https://github.com/Korgys/WebBundler</RepositoryUrl>
+    <RepositoryType>git</RepositoryType>
+    <PublishRepositoryUrl>true</PublishRepositoryUrl>
+  </PropertyGroup>
+  <ItemGroup Condition="'$(IsPackable)' == 'true'">
+    <None Include="$(MSBuildThisFileDirectory)README.md" Pack="true" PackagePath="README.md" Visible="false" />
+  </ItemGroup>
 </Project>
