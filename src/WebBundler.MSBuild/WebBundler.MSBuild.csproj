@@ -12,6 +12,7 @@
     <ProjectReference Include="..\WebBundler.Fingerprinting\WebBundler.Fingerprinting.csproj" />
     <PackageReference Include="Microsoft.Build.Framework" />
     <PackageReference Include="Microsoft.Build.Utilities.Core" />
+    <None Include="$(TargetDir)WebBundler*.dll" Pack="true" PackagePath="buildTransitive\" Visible="false" />
     <None Include="WebBundler.MSBuild.targets" Pack="true" PackagePath="buildTransitive\" />
   </ItemGroup>
 </Project>

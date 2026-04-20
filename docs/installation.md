@@ -22,14 +22,15 @@ Reference the MSBuild package from the project you want to bundle:
 
 ```xml
 <ItemGroup>
-  <PackageReference Include="WebBundler.MSBuild" Version="x.y.z" PrivateAssets="all" />
+  <PackageReference Include="WebBundler.MSBuild" Version="1.0.0" PrivateAssets="all" />
 </ItemGroup>
 ```
 
-The target runs before build and publish by default.
+The target runs automatically during build and publish.
 
 ## Notes
 
 - `bundleconfig.json` is read from the project directory unless `WebBundlerConfigFile` is set.
 - Set `WebBundlerEnabled=false` to disable the MSBuild target.
 - Set `WebBundlerEnableFingerprinting=true` to enable fingerprinting for supported bundles.
+- Set `WebBundlerWriteOutputs=false` to validate without writing files.

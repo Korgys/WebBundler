@@ -117,11 +117,18 @@ Add the package to a web project:
 
 ```xml
 <ItemGroup>
-  <PackageReference Include="WebBundler.MSBuild" Version="x.y.z" PrivateAssets="all" />
+  <PackageReference Include="WebBundler.MSBuild" Version="1.0.0" PrivateAssets="all" />
 </ItemGroup>
 ```
 
-The build target looks for `bundleconfig.json` in the project directory by default.
+The build target looks for `bundleconfig.json` in the project directory by default and runs once per build or publish invocation.
+
+Useful MSBuild properties:
+
+- `WebBundlerConfigFile`
+- `WebBundlerEnabled`
+- `WebBundlerEnableFingerprinting`
+- `WebBundlerWriteOutputs`
 
 ## Usage
 

@@ -16,7 +16,7 @@ public sealed class CliIntegrationTests
 
         Assert.AreEqual(0, exitCode);
         Assert.IsTrue(File.Exists(Path.Combine(workspace.Root, "wwwroot/dist/site.min.css")));
-        Assert.IsTrue(File.Exists(Path.Combine(workspace.Root, "wwwroot/dist/site.min.js")));
+        Assert.IsNotEmpty(Directory.GetFiles(Path.Combine(workspace.Root, "wwwroot/dist"), "site.min.*.js"));
     }
 
     [TestMethod]

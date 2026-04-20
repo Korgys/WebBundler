@@ -1,13 +1,21 @@
 <Project>
   <UsingTask TaskName="WebBundler.MSBuild.WebBundlerTask" AssemblyFile="$(MSBuildThisFileDirectory)WebBundler.MSBuild.dll" />
   <PropertyGroup>
-    <WebBundlerConfigFile Condition="'$(WebBundlerConfigFile)' == ''">$(MSBuildProjectDirectory)\bundleconfig.json</WebBundlerConfigFile>
+    <WebBundlerConfigFile Condition="'$(WebBundlerConfigFile)' == ''">$(MSBuildProjectDirectory)/bundleconfig.json</WebBundlerConfigFile>
+    <WebBundlerWriteOutputs Condition="'$(WebBundlerWriteOutputs)' == ''">true</WebBundlerWriteOutputs>
   </PropertyGroup>
-  <Target Name="WebBundlerBuild" BeforeTargets="BeforeBuild;BeforePublish" Condition="'$(WebBundlerEnabled)' != 'false'">
+  <Target Name="WebBundlerBuild" BeforeTargets="BeforeBuild" Condition="'$(WebBundlerEnabled)' != 'false'">
     <WebBundlerTask
       ProjectDirectory="$(MSBuildProjectDirectory)"
       ConfigurationFile="$(WebBundlerConfigFile)"
-      WriteOutputs="true"
+      WriteOutputs="$(WebBundlerWriteOutputs)"
+      EnableFingerprinting="$(WebBundlerEnableFingerprinting)" />
+  </Target>
+  <Target Name="WebBundlerPublish" BeforeTargets="BeforePublish" Condition="'$(WebBundlerEnabled)' != 'false' and '$(NoBuild)' == 'true'">
+    <WebBundlerTask
+      ProjectDirectory="$(MSBuildProjectDirectory)"
+      ConfigurationFile="$(WebBundlerConfigFile)"
+      WriteOutputs="$(WebBundlerWriteOutputs)"
       EnableFingerprinting="$(WebBundlerEnableFingerprinting)" />
   </Target>
 </Project>
