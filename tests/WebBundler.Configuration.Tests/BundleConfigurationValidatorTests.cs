@@ -69,4 +69,48 @@ public sealed class BundleConfigurationValidatorTests
         Assert.IsFalse(result.IsValid);
         Assert.IsTrue(result.Messages.Any(message => message.Severity == BuildSeverity.Error));
     }
+
+    [TestMethod]
+    public void WarnsAboutUnusualOutputExtensions()
+    {
+        var validator = new BundleConfigurationValidator();
+        var result = validator.Validate(new BundleConfigurationDocument
+        {
+            Version = 1,
+            Bundles =
+            [
+                new AssetBundleDefinition
+                {
+                    Output = "wwwroot/dist/site.min.txt",
+                    Inputs = ["wwwroot/css/site.css"],
+                    Type = BundleType.Css
+                }
+            ]
+        });
+
+        Assert.IsTrue(result.IsValid);
+        Assert.IsTrue(result.Messages.Any(message => message.Severity == BuildSeverity.Warning));
+    }
+
+    [TestMethod]
+    public void RejectsUnsupportedVersionAndMissingFields()
+    {
+        var validator = new BundleConfigurationValidator();
+        var result = validator.Validate(new BundleConfigurationDocument
+        {
+            Version = 2,
+            Bundles =
+            [
+                new AssetBundleDefinition
+                {
+                    Output = string.Empty,
+                    Inputs = [],
+                    Type = BundleType.JavaScript
+                }
+            ]
+        });
+
+        Assert.IsFalse(result.IsValid);
+        Assert.IsTrue(result.Messages.Any(message => message.Severity == BuildSeverity.Error));
+    }
 }

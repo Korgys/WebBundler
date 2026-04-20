@@ -20,6 +20,12 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "WebBundler.Configuration.Te
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "WebBundler.IntegrationTests", "tests\WebBundler.IntegrationTests\WebBundler.IntegrationTests.csproj", "{014F83DF-C332-49CA-8174-18FF598E26F0}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "WebBundler.Minification.Tests", "tests\WebBundler.Minification.Tests\WebBundler.Minification.Tests.csproj", "{DDAA0C93-BF0C-4D52-A3F7-B8A0D7F5CE4F}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "WebBundler.Fingerprinting.Tests", "tests\WebBundler.Fingerprinting.Tests\WebBundler.Fingerprinting.Tests.csproj", "{5A28441B-7A4F-45D1-8123-2D8E4A0F8F0A}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "WebBundler.Tool.Tests", "tests\WebBundler.Tool.Tests\WebBundler.Tool.Tests.csproj", "{F7F1E5E1-8D2C-4C7F-9D4C-0F35E8D1F6E7}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -62,5 +68,17 @@ Global
 		{014F83DF-C332-49CA-8174-18FF598E26F0}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{014F83DF-C332-49CA-8174-18FF598E26F0}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{014F83DF-C332-49CA-8174-18FF598E26F0}.Release|Any CPU.Build.0 = Release|Any CPU
+		{DDAA0C93-BF0C-4D52-A3F7-B8A0D7F5CE4F}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{DDAA0C93-BF0C-4D52-A3F7-B8A0D7F5CE4F}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{DDAA0C93-BF0C-4D52-A3F7-B8A0D7F5CE4F}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{DDAA0C93-BF0C-4D52-A3F7-B8A0D7F5CE4F}.Release|Any CPU.Build.0 = Release|Any CPU
+		{5A28441B-7A4F-45D1-8123-2D8E4A0F8F0A}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{5A28441B-7A4F-45D1-8123-2D8E4A0F8F0A}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{5A28441B-7A4F-45D1-8123-2D8E4A0F8F0A}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{5A28441B-7A4F-45D1-8123-2D8E4A0F8F0A}.Release|Any CPU.Build.0 = Release|Any CPU
+		{F7F1E5E1-8D2C-4C7F-9D4C-0F35E8D1F6E7}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{F7F1E5E1-8D2C-4C7F-9D4C-0F35E8D1F6E7}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{F7F1E5E1-8D2C-4C7F-9D4C-0F35E8D1F6E7}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{F7F1E5E1-8D2C-4C7F-9D4C-0F35E8D1F6E7}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 EndGlobal

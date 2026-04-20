@@ -1,4 +1,5 @@
 using WebBundler.Core;
+using WebBundler.Fingerprinting;
 using WebBundler.Minification;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 
@@ -144,6 +145,61 @@ public sealed class BundleBuildServiceTests
 
         Assert.IsFalse(result.Succeeded);
         Assert.IsTrue(result.Messages.Any(message => message.Severity == BuildSeverity.Error));
+    }
+
+    [TestMethod]
+    public void EmitsAWarningWhenFingerprintingIsRequestedWithoutAFingerprinter()
+    {
+        using var workspace = new TestWorkspace();
+        workspace.Write("assets/site.css", "body { color: red; }\n");
+
+        var service = new BundleBuildService(DefaultAssetMinifiers.Create(), fileSystem: new PhysicalAssetFileSystem());
+        var result = service.Build(new BundleBuildRequest(
+            new BuildContext(workspace.Root),
+            [
+                new AssetBundleDefinition
+                {
+                    Output = "dist/site.css",
+                    Inputs = ["assets/site.css"],
+                    Type = BundleType.Css,
+                    Fingerprint = true
+                }
+            ],
+            WriteOutputs: false));
+
+        Assert.IsTrue(result.Succeeded);
+        Assert.AreEqual(Path.GetFullPath(Path.Combine(workspace.Root, "dist/site.css")), result.Outputs[0].OutputPath);
+        Assert.IsTrue(result.Messages.Any(message => message.Severity == BuildSeverity.Warning));
+    }
+
+    [TestMethod]
+    public void RejectsDuplicateOutputsAfterPathNormalization()
+    {
+        using var workspace = new TestWorkspace();
+        workspace.Write("assets/a.css", "body { color: red; }\n");
+
+        var service = new BundleBuildService(DefaultAssetMinifiers.Create(), fileSystem: new PhysicalAssetFileSystem());
+        var result = service.Build(new BundleBuildRequest(
+            new BuildContext(workspace.Root),
+            [
+                new AssetBundleDefinition
+                {
+                    Output = "dist/site.css",
+                    Inputs = ["assets/a.css"],
+                    Type = BundleType.Css
+                },
+                new AssetBundleDefinition
+                {
+                    Output = Path.Combine("dist", ".", "site.css"),
+                    Inputs = ["assets/a.css"],
+                    Type = BundleType.Css
+                }
+            ],
+            WriteOutputs: false));
+
+        Assert.IsFalse(result.Succeeded);
+        Assert.IsTrue(result.Messages.Any(message => message.Severity == BuildSeverity.Error));
+        Assert.HasCount(1, result.Outputs);
     }
 
     private sealed class TestWorkspace : IDisposable

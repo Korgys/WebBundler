@@ -12,6 +12,5 @@
   <ItemGroup>
     <ProjectReference Include="..\..\src\WebBundler.Core\WebBundler.Core.csproj" />
     <ProjectReference Include="..\..\src\WebBundler.Minification\WebBundler.Minification.csproj" />
-    <ProjectReference Include="..\..\src\WebBundler.Fingerprinting\WebBundler.Fingerprinting.csproj" />
   </ItemGroup>
 </Project>
