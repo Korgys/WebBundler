@@ -128,4 +128,16 @@ The build target looks for `bundleconfig.json` in the project directory by defau
 - `validate` checks configuration structure only.
 - `check` validates configuration and asset inputs without writing files.
 
-See `docs/cli.md` and `docs/msbuild.md` for more examples.
+## Docs
+
+- [Quickstart](docs/quickstart.md)
+- [Migration guide](docs/migration.md)
+- [Compatibility](docs/compatibility.md)
+- [FAQ](docs/faq.md)
+- [CLI reference](docs/cli.md)
+- [Configuration](docs/configuration.md)
+- [Installation](docs/installation.md)
+- [MSBuild](docs/msbuild.md)
+- [Architecture](docs/architecture.md)
+
+See the docs above for examples and implementation details.
