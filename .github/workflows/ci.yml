@@ -118,11 +118,11 @@ jobs:
       - name: Print coverage summary
         run: cat coveragereport/Summary.txt
 
-      - name: Enforce coverage (>= 60%)
+      - name: Enforce coverage (>= 75%)
         run: |
           LINE_COV=$(grep -Po 'Line coverage:\s*\K[0-9.]+(?=%)' coveragereport/Summary.txt || echo 0)
           echo "Detected coverage: ${LINE_COV}%"
-          awk -v cov="$LINE_COV" 'BEGIN { exit (cov>=60)?0:1 }'
+          awk -v cov="$LINE_COV" 'BEGIN { exit (cov>=75)?0:1 }'
 
       - name: Upload coverage report artifact
         if: always()
