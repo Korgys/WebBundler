@@ -20,9 +20,14 @@
 ## Path and input behavior
 
 - `bundleconfig.json` is read from the project root by default.
-- Input paths are relative to the project root.
-- Glob patterns are supported.
-- Inputs are resolved deterministically.
+- Input and output paths are typically relative to the project root.
+- Use `/` in JSON when possible; `\` also works.
+- Exact-path lookups follow the host filesystem, so keep casing correct on Linux and macOS.
+- Glob patterns are supported and resolved deterministically.
+- Glob matching is case-insensitive when resolving candidates.
+- Duplicate outputs are checked with Windows-aware path comparison.
+
+See [Configuration](configuration.md) for the full glob syntax and config shape.
 
 ## Practical compatibility notes
 

@@ -1,4 +1,5 @@
 {
+  "$schema": "https://raw.githubusercontent.com/korgys/WebBundler/main/schemas/bundleconfig.v1.schema.json",
   "version": 1,
   "bundles": [
     {
@@ -17,7 +18,8 @@
         "wwwroot/js/site.js"
       ],
       "type": "js",
-      "minify": true
+      "minify": true,
+      "fingerprint": true
     }
   ]
 }

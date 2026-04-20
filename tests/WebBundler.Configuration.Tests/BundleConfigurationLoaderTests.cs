@@ -15,6 +15,7 @@ public sealed class BundleConfigurationLoaderTests
             "bundleconfig.json",
             """
             {
+              "$schema": "https://raw.githubusercontent.com/korgys/WebBundler/main/schemas/bundleconfig.v1.schema.json",
               "version": 1,
               "bundles": [
                 {
@@ -35,6 +36,51 @@ public sealed class BundleConfigurationLoaderTests
         Assert.AreEqual(1, result.Configuration!.Version);
         Assert.HasCount(1, result.Configuration.Bundles);
         Assert.AreEqual(BundleType.Css, result.Configuration.Bundles[0].Type);
+        Assert.IsNotNull(result.Configuration.ExtensionData);
+        Assert.IsTrue(result.Configuration.ExtensionData!.ContainsKey("$schema"));
+    }
+
+    [TestMethod]
+    public void LoadsAdvancedConfigurationShape()
+    {
+        using var workspace = new TestWorkspace();
+        var path = workspace.Write(
+            "bundleconfig.json",
+            """
+            {
+              "$schema": "https://raw.githubusercontent.com/korgys/WebBundler/main/schemas/bundleconfig.v1.schema.json",
+              "version": 1,
+              "bundles": [
+                {
+                  "output": "wwwroot/dist/site.min.js",
+                  "inputs": [
+                    "wwwroot/js/vendor/*.js",
+                    "wwwroot/js/app.js"
+                  ],
+                  "type": "js",
+                  "minify": false,
+                  "fingerprint": true,
+                  "sourceMap": true,
+                  "environment": "Development",
+                  "include": [ "wwwroot/js/**/*.js" ],
+                  "exclude": [ "wwwroot/js/**/*.min.js" ]
+                }
+              ]
+            }
+            """);
+
+        var loader = new BundleConfigurationLoader();
+        var result = loader.Load(path);
+
+        Assert.IsTrue(result.Succeeded);
+        Assert.IsNotNull(result.Configuration);
+        var bundle = result.Configuration!.Bundles[0];
+        Assert.IsFalse(bundle.Minify);
+        Assert.IsTrue(bundle.Fingerprint.HasValue && bundle.Fingerprint.Value);
+        Assert.IsTrue(bundle.SourceMap.HasValue && bundle.SourceMap.Value);
+        Assert.AreEqual("Development", bundle.Environment);
+        Assert.HasCount(1, bundle.Include!);
+        Assert.HasCount(1, bundle.Exclude!);
     }
 
     [TestMethod]

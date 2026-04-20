@@ -69,6 +69,7 @@ Current capabilities include:
 - JavaScript bundling
 - minification
 - JSON configuration via `bundleconfig.json`
+- versioned JSON Schema for IDE completion
 - deterministic output
 - CLI usage
 - MSBuild integration

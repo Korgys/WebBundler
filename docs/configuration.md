@@ -2,24 +2,49 @@
 
 WebBundler starts with a single JSON file named `bundleconfig.json`.
 
-## Versioning
+## Schema And IDE Support
 
-The root document includes a `version` field. The initial version is `1`.
-
-## Shape
+Add the versioned schema to opt into IDE completion and validation:
 
 ```json
 {
+  "$schema": "https://raw.githubusercontent.com/korgys/WebBundler/main/schemas/bundleconfig.v1.schema.json",
+  "version": 1,
+  "bundles": []
+}
+```
+
+The schema file is versioned alongside the config shape. If you prefer an offline copy, store the schema in your repo and point `$schema` to that local path.
+
+## Versioning
+
+The root document includes a required `version` field. The current version is `1`.
+
+## Advanced Example
+
+```json
+{
+  "$schema": "https://raw.githubusercontent.com/korgys/WebBundler/main/schemas/bundleconfig.v1.schema.json",
   "version": 1,
   "bundles": [
     {
       "output": "wwwroot/dist/site.min.css",
       "inputs": [
         "wwwroot/css/reset.css",
-        "wwwroot/css/site.css"
+        "wwwroot/css/**/*.css"
       ],
       "type": "css",
       "minify": true
+    },
+    {
+      "output": "wwwroot/dist/site.min.js",
+      "inputs": [
+        "wwwroot/js/vendor/*.js",
+        "wwwroot/js/app.js"
+      ],
+      "type": "js",
+      "minify": false,
+      "fingerprint": true
     }
   ]
 }
@@ -27,33 +52,47 @@ The root document includes a `version` field. The initial version is `1`.
 
 ## Fields
 
-- `version`
-  - configuration schema version
-- `bundles`
-  - ordered list of bundle definitions
-- `output`
-  - output file path relative to the project root
-- `inputs`
-  - ordered list of file paths or glob patterns
-- `type`
-  - `css` or `js`
-- `minify`
-  - enables the built-in minifier
+| Scope | Field | Status | Notes |
+| --- | --- | --- | --- |
+| Root | `$schema` | optional | Schema association for editor tooling. |
+| Root | `version` | required | Must be `1` for the current release. |
+| Root | `bundles` | required | Ordered list of bundle definitions. |
+| Bundle | `output` | required | Output file path. Relative paths are recommended. |
+| Bundle | `inputs` | required | Ordered list of file paths or glob patterns. |
+| Bundle | `type` | required | `css` or `js`. |
+| Bundle | `minify` | optional | Defaults to `true`. |
+| Bundle | `fingerprint` | optional | Inserts a short hash before the file extension when a fingerprinter is available. |
+| Bundle | `sourceMap` | reserved | Accepted by the parser for forward compatibility. |
+| Bundle | `environment` | reserved | Accepted by the parser for forward compatibility. |
+| Bundle | `include` | reserved | Accepted by the parser for forward compatibility. |
+| Bundle | `exclude` | reserved | Accepted by the parser for forward compatibility. |
 
-## Behavior
+## Validation
 
-- bundle order follows the config order
-- glob matches are resolved deterministically
-- missing files fail validation/build
-- duplicate outputs are rejected
+Current validation checks:
 
-## Future-friendly fields
+- supported root `version`
+- at least one bundle
+- unique bundle outputs
+- non-empty inputs per bundle
+- extension hints for `css` and `js` outputs
 
-The schema is intentionally small, but it is designed to evolve toward:
+## Globbing Conventions
 
-- fingerprinting
-- source maps
-- environment-specific behavior
-- include/exclude filters
-- manifests
-- output style options
+- `*` matches within a single path segment.
+- `?` matches one character.
+- `**` matches nested directories.
+- `[` and `]` work for character classes.
+- Input patterns are resolved relative to the project root.
+- Both `/` and `\` separators are accepted in JSON; `/` is the most portable choice.
+- Glob expansion is deterministic and keeps paths sorted.
+- Duplicate files matched by multiple inputs in the same bundle are ignored after the first match.
+- Negative glob syntax such as `!file.js` is not supported.
+- Every input pattern must match at least one file.
+
+## Cross-Platform Path Behavior
+
+- Exact file lookups follow the host filesystem, so casing must be correct on case-sensitive systems.
+- Glob matching is case-insensitive when resolving candidates.
+- Duplicate output detection is case-insensitive on Windows and ordinal on other platforms.
+- Avoid paths that differ only by case if the configuration must work everywhere.

@@ -1,0 +1,97 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://raw.githubusercontent.com/korgys/WebBundler/main/schemas/bundleconfig.v1.schema.json",
+  "title": "WebBundler bundle configuration v1",
+  "type": "object",
+  "required": [
+    "version",
+    "bundles"
+  ],
+  "properties": {
+    "$schema": {
+      "type": "string",
+      "description": "Schema association for editor tooling."
+    },
+    "version": {
+      "const": 1,
+      "description": "Configuration schema version."
+    },
+    "bundles": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "$ref": "#/$defs/bundle"
+      }
+    }
+  },
+  "additionalProperties": true,
+  "$defs": {
+    "bundle": {
+      "type": "object",
+      "required": [
+        "output",
+        "inputs",
+        "type"
+      ],
+      "properties": {
+        "output": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Output file path."
+        },
+        "inputs": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "string",
+            "minLength": 1
+          },
+          "description": "Ordered list of input paths or glob patterns."
+        },
+        "type": {
+          "type": "string",
+          "enum": [
+            "css",
+            "js"
+          ],
+          "description": "Bundle type."
+        },
+        "minify": {
+          "type": "boolean",
+          "default": true,
+          "description": "Enable built-in minification."
+        },
+        "fingerprint": {
+          "type": "boolean",
+          "description": "Insert a short fingerprint into the output file name when available."
+        },
+        "sourceMap": {
+          "type": "boolean",
+          "description": "Reserved for forward-compatible source map scenarios."
+        },
+        "environment": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Reserved for forward-compatible environment-specific scenarios."
+        },
+        "include": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          },
+          "description": "Reserved for forward-compatible include filters."
+        },
+        "exclude": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          },
+          "description": "Reserved for forward-compatible exclude filters."
+        }
+      },
+      "additionalProperties": true
+    }
+  }
+}

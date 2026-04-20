@@ -26,6 +26,7 @@ your-project/
 
 ```json
 {
+  "$schema": "https://raw.githubusercontent.com/korgys/WebBundler/main/schemas/bundleconfig.v1.schema.json",
   "version": 1,
   "bundles": [
     {
@@ -68,5 +69,6 @@ webbundler build --config bundleconfig.json
 ## Notes
 
 - Run the commands from the project root so relative paths resolve correctly.
+- `$schema` is optional, but it enables editor completion when supported.
 - `type` must be `css` or `js`.
 - `inputs` are processed in order.
