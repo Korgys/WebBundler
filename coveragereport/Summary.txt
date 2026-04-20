@@ -1,0 +1,53 @@
+Summary
+  Generated on: 20/04/2026 - 13:15:08
+  Parser: MultiReport (3x OpenCover)
+  Assemblies: 5
+  Classes: 24
+  Files: 24
+  Line coverage: 68.3%
+  Covered lines: 315
+  Uncovered lines: 146
+  Coverable lines: 461
+  Total lines: 949
+  Branch coverage: 65.3% (166 of 254)
+  Covered branches: 166
+  Total branches: 254
+  Method coverage: 75% (72 of 96)
+  Full method coverage: 61.4% (59 of 96)
+  Covered methods: 72
+  Fully covered methods: 59
+  Total methods: 96
+
+webbundler                                                   63%
+  WebBundler.Tool.CliApplication                             62%
+  WebBundler.Tool.CliOptions                                100%
+  WebBundler.Tool.Program                                     0%
+
+WebBundler.Configuration                                   70.9%
+  WebBundler.Configuration.BundleConfigurationDocument     66.6%
+  WebBundler.Configuration.BundleConfigurationLoader       84.6%
+  WebBundler.Configuration.BundleConfigurationLoadResult    100%
+  WebBundler.Configuration.BundleConfigurationValidator    67.5%
+  WebBundler.Configuration.BundleTypeJsonConverter         42.8%
+  WebBundler.Configuration.ConfigurationValidationResult    100%
+
+WebBundler.Core                                            75.5%
+  WebBundler.Core.AssetBundleDefinition                      50%
+  WebBundler.Core.AssetInput                                  0%
+  WebBundler.Core.AssetManifest                               0%
+  WebBundler.Core.AssetOutput                                50%
+  WebBundler.Core.BuildContext                              100%
+  WebBundler.Core.BuildMessage                               80%
+  WebBundler.Core.BundleBuildRequest                        100%
+  WebBundler.Core.BundleBuildResult                         100%
+  WebBundler.Core.BundleBuildService                       79.6%
+  WebBundler.Core.FingerprintResult                           0%
+  WebBundler.Core.PhysicalAssetFileSystem                  76.9%
+
+WebBundler.Fingerprinting                                     0%
+  WebBundler.Fingerprinting.Sha256AssetFingerprinter          0%
+
+WebBundler.Minification                                    64.7%
+  WebBundler.Minification.CssAssetMinifier                 90.9%
+  WebBundler.Minification.DefaultAssetMinifiers             100%
+  WebBundler.Minification.JavaScriptAssetMinifier          58.9%
