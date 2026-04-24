@@ -1,6 +1,7 @@
 {
   "$schema": "https://raw.githubusercontent.com/korgys/WebBundler/main/schemas/bundleconfig.v1.schema.json",
   "version": 1,
+  "manifestOutput": "wwwroot/dist/webbundler.manifest.json",
   "bundles": [
     {
       "output": "wwwroot/dist/site.min.css",

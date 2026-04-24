@@ -28,6 +28,7 @@ your-project/
 {
   "$schema": "https://raw.githubusercontent.com/korgys/WebBundler/main/schemas/bundleconfig.v1.schema.json",
   "version": 1,
+  "manifestOutput": "wwwroot/dist/webbundler.manifest.json",
   "bundles": [
     {
       "output": "wwwroot/dist/site.min.css",
@@ -65,6 +66,7 @@ webbundler build --config bundleconfig.json
 - `build` returns `0` and writes:
   - `wwwroot/dist/site.min.css`
   - `wwwroot/dist/site.min.js`
+  - `wwwroot/dist/webbundler.manifest.json` when `manifestOutput` is set
 
 ## Notes
 
@@ -72,3 +74,4 @@ webbundler build --config bundleconfig.json
 - `$schema` is optional, but it enables editor completion when supported.
 - `type` must be `css` or `js`.
 - `inputs` are processed in order.
+- `manifestOutput` is optional and produces a JSON manifest when `build` runs.

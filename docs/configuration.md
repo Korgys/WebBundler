@@ -26,6 +26,7 @@ The root document includes a required `version` field. The current version is `1
 {
   "$schema": "https://raw.githubusercontent.com/korgys/WebBundler/main/schemas/bundleconfig.v1.schema.json",
   "version": 1,
+  "manifestOutput": "wwwroot/dist/webbundler.manifest.json",
   "bundles": [
     {
       "output": "wwwroot/dist/site.min.css",
@@ -56,6 +57,7 @@ The root document includes a required `version` field. The current version is `1
 | --- | --- | --- | --- |
 | Root | `$schema` | optional | Schema association for editor tooling. |
 | Root | `version` | required | Must be `1` for the current release. |
+| Root | `manifestOutput` | optional | JSON manifest output path written during `build` when configured. |
 | Root | `bundles` | required | Ordered list of bundle definitions. |
 | Bundle | `output` | required | Output file path. Relative paths are recommended. |
 | Bundle | `inputs` | required | Ordered list of file paths or glob patterns. |
@@ -76,6 +78,7 @@ Current validation checks:
 - unique bundle outputs
 - non-empty inputs per bundle
 - extension hints for `css` and `js` outputs
+- manifest output must not reuse a bundle output path
 
 ## Globbing Conventions
 
@@ -89,6 +92,12 @@ Current validation checks:
 - Duplicate files matched by multiple inputs in the same bundle are ignored after the first match.
 - Negative glob syntax such as `!file.js` is not supported.
 - Every input pattern must match at least one file.
+
+## Manifest Format
+
+When `manifestOutput` is set, `build` writes a deterministic JSON manifest alongside the bundle outputs. Paths in the manifest use forward slashes and are relative to the project root.
+
+Example manifest: [manifest.example.json](manifest.example.json)
 
 ## Cross-Platform Path Behavior
 

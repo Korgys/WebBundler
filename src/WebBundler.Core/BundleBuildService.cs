@@ -9,6 +9,7 @@ public sealed class BundleBuildService
     private readonly IAssetFileSystem fileSystem;
     private readonly IReadOnlyDictionary<BundleType, IAssetMinifier> minifiers;
     private readonly IAssetFingerprinter? fingerprinter;
+    private readonly AssetManifestService manifestService;
 
     public BundleBuildService(
         IEnumerable<IAssetMinifier> minifiers,
@@ -18,6 +19,7 @@ public sealed class BundleBuildService
         this.fileSystem = fileSystem ?? new PhysicalAssetFileSystem();
         this.minifiers = minifiers.ToDictionary(minifier => minifier.SupportedType);
         this.fingerprinter = fingerprinter;
+        manifestService = new AssetManifestService();
     }
 
     public BundleBuildResult Build(BundleBuildRequest request)
@@ -108,12 +110,40 @@ public sealed class BundleBuildService
                 resolvedInputs,
                 fingerprint?.Value,
                 Encoding.UTF8.GetByteCount(content),
-                ComputeHash(content)));
+                ComputeHash(content))
+            {
+                LogicalOutputPath = bundle.Output,
+                Type = bundle.Type
+            });
 
             messages.Add(new BuildMessage(
                 BuildSeverity.Info,
                 $"Built '{bundle.Output}' from {resolvedInputs.Count} file(s).",
                 Path: bundle.Output));
+        }
+
+        if (!messages.Any(message => message.Severity == BuildSeverity.Error) &&
+            !string.IsNullOrWhiteSpace(request.ManifestOutput))
+        {
+            var manifestOutputPath = ResolvePath(rootDirectory, request.ManifestOutput);
+            if (!seenOutputs.Add(NormalizePath(manifestOutputPath)))
+            {
+                messages.Add(new BuildMessage(
+                    BuildSeverity.Error,
+                    $"Manifest output path '{request.ManifestOutput}' conflicts with an existing bundle output.",
+                    Path: request.ManifestOutput));
+            }
+            else if (request.WriteOutputs)
+            {
+                var manifest = manifestService.Create(rootDirectory, outputs);
+                var manifestContent = manifestService.Serialize(manifest);
+                fileSystem.CreateDirectory(fileSystem.GetDirectoryName(manifestOutputPath));
+                fileSystem.WriteAllText(manifestOutputPath, manifestContent);
+                messages.Add(new BuildMessage(
+                    BuildSeverity.Info,
+                    $"Wrote manifest '{request.ManifestOutput}'.",
+                    Path: request.ManifestOutput));
+            }
         }
 
         return new BundleBuildResult(outputs, messages);

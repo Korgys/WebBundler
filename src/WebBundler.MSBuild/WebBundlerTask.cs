@@ -48,7 +48,8 @@ public sealed class WebBundlerTask : Microsoft.Build.Utilities.Task
             new BundleBuildRequest(
                 new BuildContext(ProjectDirectory, configurationPath),
                 loadResult.Configuration!.Bundles,
-                WriteOutputs));
+                WriteOutputs,
+                loadResult.Configuration.ManifestOutput));
 
         LogMessages(buildResult.Messages);
         return buildResult.Succeeded;

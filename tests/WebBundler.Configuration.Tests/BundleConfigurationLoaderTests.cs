@@ -18,6 +18,7 @@ public sealed class BundleConfigurationLoaderTests
             {
               "$schema": "https://raw.githubusercontent.com/korgys/WebBundler/main/schemas/bundleconfig.v1.schema.json",
               "version": 1,
+              "manifestOutput": "wwwroot/dist/webbundler.manifest.json",
               "bundles": [
                 {
                   "output": "wwwroot/dist/site.min.css",
@@ -35,6 +36,7 @@ public sealed class BundleConfigurationLoaderTests
         Assert.IsTrue(result.Succeeded);
         Assert.IsNotNull(result.Configuration);
         Assert.AreEqual(1, result.Configuration!.Version);
+        Assert.AreEqual("wwwroot/dist/webbundler.manifest.json", result.Configuration.ManifestOutput);
         Assert.HasCount(1, result.Configuration.Bundles);
         Assert.AreEqual(BundleType.Css, result.Configuration.Bundles[0].Type);
         Assert.IsNotNull(result.Configuration.ExtensionData);

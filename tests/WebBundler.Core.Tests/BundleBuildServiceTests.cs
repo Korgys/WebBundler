@@ -1,3 +1,6 @@
+using System.Security.Cryptography;
+using System.Text;
+using System.Text.Json;
 using WebBundler.Core;
 using WebBundler.Fingerprinting;
 using WebBundler.Minification;
@@ -45,6 +48,160 @@ public sealed class BundleBuildServiceTests
         StringAssert.Contains(css, "h1{color:red}");
         StringAssert.Contains(File.ReadAllText(Path.Combine(workspace.Root, "wwwroot/dist/site.min.js")), "window.a = 1;");
         StringAssert.Contains(File.ReadAllText(Path.Combine(workspace.Root, "wwwroot/dist/site.min.js")), "window.b = 2;");
+    }
+
+    [TestMethod]
+    public void WritesManifestForFingerprintedBundles()
+    {
+        using var workspace = new TestWorkspace();
+        workspace.Write("wwwroot/js/site.js", "window.site = true;\n");
+
+        var service = new BundleBuildService(
+            DefaultAssetMinifiers.Create(),
+            new Sha256AssetFingerprinter(),
+            new PhysicalAssetFileSystem());
+
+        var result = service.Build(new BundleBuildRequest(
+            new BuildContext(workspace.Root),
+            [
+                new AssetBundleDefinition
+                {
+                    Output = "wwwroot/dist/site.min.js",
+                    Inputs = ["wwwroot/js/site.js"],
+                    Type = BundleType.JavaScript,
+                    Minify = false,
+                    Fingerprint = true
+                }
+            ],
+            ManifestOutput: "wwwroot/dist/webbundler.manifest.json"));
+
+        Assert.IsTrue(result.Succeeded);
+
+        var manifestPath = Path.Combine(workspace.Root, "wwwroot/dist/webbundler.manifest.json");
+        Assert.IsTrue(File.Exists(manifestPath));
+
+        using var manifest = JsonDocument.Parse(File.ReadAllText(manifestPath));
+        var bundles = manifest.RootElement.GetProperty("bundles");
+        Assert.AreEqual(1, bundles.EnumerateObject().Count());
+
+        var entry = bundles.GetProperty("wwwroot/dist/site.min.js");
+        Assert.IsTrue(entry.GetProperty("fingerprinted").GetBoolean());
+        Assert.AreEqual("js", entry.GetProperty("type").GetString());
+        Assert.IsFalse(Path.IsPathRooted(entry.GetProperty("output").GetString()!));
+        Assert.IsFalse(entry.GetProperty("output").GetString()!.Contains('\\'));
+
+        var fingerprintedFiles = Directory.GetFiles(Path.Combine(workspace.Root, "wwwroot/dist"), "site.min.*.js");
+        Assert.HasCount(1, fingerprintedFiles);
+        var fingerprintedContent = File.ReadAllText(fingerprintedFiles[0]);
+        var expectedFingerprint = Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(fingerprintedContent))).ToLowerInvariant()[..8];
+        Assert.AreEqual($"wwwroot/dist/site.min.{expectedFingerprint}.js", entry.GetProperty("output").GetString());
+    }
+
+    [TestMethod]
+    public void WritesManifestWithoutFingerprinting()
+    {
+        using var workspace = new TestWorkspace();
+        workspace.Write("wwwroot/css/site.css", "body { color: black; }\n");
+
+        var service = new BundleBuildService(DefaultAssetMinifiers.Create(), fileSystem: new PhysicalAssetFileSystem());
+        var result = service.Build(new BundleBuildRequest(
+            new BuildContext(workspace.Root),
+            [
+                new AssetBundleDefinition
+                {
+                    Output = "wwwroot/dist/../dist/site.min.css",
+                    Inputs = ["wwwroot/css/site.css"],
+                    Type = BundleType.Css,
+                    Minify = false
+                }
+            ],
+            ManifestOutput: "wwwroot/dist/webbundler.manifest.json"));
+
+        Assert.IsTrue(result.Succeeded);
+
+        using var manifest = JsonDocument.Parse(File.ReadAllText(Path.Combine(workspace.Root, "wwwroot/dist/webbundler.manifest.json")));
+        var entry = manifest.RootElement.GetProperty("bundles").GetProperty("wwwroot/dist/site.min.css");
+        Assert.IsFalse(entry.GetProperty("fingerprinted").GetBoolean());
+        Assert.AreEqual("css", entry.GetProperty("type").GetString());
+        Assert.AreEqual("wwwroot/dist/site.min.css", entry.GetProperty("output").GetString());
+        Assert.IsFalse(Path.IsPathRooted(entry.GetProperty("output").GetString()!));
+        Assert.IsFalse(entry.GetProperty("output").GetString()!.Contains('\\'));
+    }
+
+    [TestMethod]
+    public void CheckModeDoesNotWriteManifest()
+    {
+        using var workspace = new TestWorkspace();
+        workspace.Write("wwwroot/css/site.css", "body { color: black; }\n");
+
+        var service = new BundleBuildService(DefaultAssetMinifiers.Create(), fileSystem: new PhysicalAssetFileSystem());
+        var result = service.Build(new BundleBuildRequest(
+            new BuildContext(workspace.Root),
+            [
+                new AssetBundleDefinition
+                {
+                    Output = "wwwroot/dist/site.min.css",
+                    Inputs = ["wwwroot/css/site.css"],
+                    Type = BundleType.Css,
+                    Minify = false
+                }
+            ],
+            WriteOutputs: false,
+            ManifestOutput: "wwwroot/dist/webbundler.manifest.json"));
+
+        Assert.IsTrue(result.Succeeded);
+        Assert.IsFalse(File.Exists(Path.Combine(workspace.Root, "wwwroot/dist/webbundler.manifest.json")));
+    }
+
+    [TestMethod]
+    public void ManifestContentIsDeterministicAndOrdered()
+    {
+        using var workspace = new TestWorkspace();
+        workspace.Write("assets/a.css", "body { color: red; }\n");
+        workspace.Write("assets/z.js", "window.z = true;\n");
+
+        var service = new BundleBuildService(DefaultAssetMinifiers.Create(), fileSystem: new PhysicalAssetFileSystem());
+        var request = new BundleBuildRequest(
+            new BuildContext(workspace.Root),
+            [
+                new AssetBundleDefinition
+                {
+                    Output = "wwwroot/dist/z.js",
+                    Inputs = ["assets/z.js"],
+                    Type = BundleType.JavaScript,
+                    Minify = false
+                },
+                new AssetBundleDefinition
+                {
+                    Output = "wwwroot/dist/a.css",
+                    Inputs = ["assets/a.css"],
+                    Type = BundleType.Css,
+                    Minify = false
+                }
+            ],
+            ManifestOutput: "wwwroot/dist/webbundler.manifest.json");
+
+        var first = service.Build(request);
+        var firstContent = File.ReadAllText(Path.Combine(workspace.Root, "wwwroot/dist/webbundler.manifest.json"));
+        var second = service.Build(request);
+        var secondContent = File.ReadAllText(Path.Combine(workspace.Root, "wwwroot/dist/webbundler.manifest.json"));
+
+        Assert.IsTrue(first.Succeeded);
+        Assert.IsTrue(second.Succeeded);
+        Assert.AreEqual(firstContent, secondContent);
+
+        using var manifest = JsonDocument.Parse(firstContent);
+        var bundleNames = manifest.RootElement.GetProperty("bundles").EnumerateObject().Select(property => property.Name).ToArray();
+        CollectionAssert.AreEqual(
+            new[] { "wwwroot/dist/a.css", "wwwroot/dist/z.js" },
+            bundleNames);
+
+        foreach (var property in manifest.RootElement.GetProperty("bundles").EnumerateObject())
+        {
+            var output = property.Value.GetProperty("output").GetString()!;
+            Assert.IsFalse(Path.IsPathRooted(output));
+            Assert.IsFalse(output.Contains('\\'));
+        }
     }
 
     [TestMethod]

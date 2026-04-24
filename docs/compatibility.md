@@ -26,6 +26,7 @@
 - Glob patterns are supported and resolved deterministically.
 - Glob matching is case-insensitive when resolving candidates.
 - Duplicate outputs are checked with Windows-aware path comparison.
+- Manifest paths are emitted relative to the project root and normalized with `/`.
 
 See [Configuration](configuration.md) for the full glob syntax and config shape.
 

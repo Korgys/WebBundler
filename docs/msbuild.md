@@ -36,12 +36,14 @@ By default the config file is `$(MSBuildProjectDirectory)/bundleconfig.json`.
 - `WebBundlerEnabled=false` disables the target.
 - `WebBundlerEnableFingerprinting=true` enables fingerprinting for supported bundles.
 - `WebBundlerWriteOutputs=false` validates and builds without writing files.
+- Manifest output is configured in `bundleconfig.json` and is written only when outputs are written.
 
 ## Behavior
 
 - validates configuration before building
 - resolves inputs from the project directory
 - writes outputs by default
+- writes the configured manifest alongside bundle outputs
 - honors `WebBundlerWriteOutputs=false` for validation-only runs
 - keeps the MSBuild path aligned with the CLI core services
 

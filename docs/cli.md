@@ -29,6 +29,7 @@ webbundler validate --config bundleconfig.json
 ## Command Summary
 
 - `build` writes output files after loading and validating `bundleconfig.json`.
+- If `manifestOutput` is configured, `build` also writes the manifest file.
 - `check` loads and validates the config, resolves bundle inputs, and does not write files.
 - `validate` loads and validates the config structure only.
 - `clean` is planned for later.

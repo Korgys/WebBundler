@@ -29,6 +29,74 @@ public sealed class BundleConfigurationValidatorTests
     }
 
     [TestMethod]
+    public void AcceptsManifestOutput()
+    {
+        var validator = new BundleConfigurationValidator();
+        var result = validator.Validate(new BundleConfigurationDocument
+        {
+            Version = 1,
+            ManifestOutput = "wwwroot/dist/webbundler.manifest.json",
+            Bundles =
+            [
+                new AssetBundleDefinition
+                {
+                    Output = "wwwroot/dist/site.min.css",
+                    Inputs = ["wwwroot/css/site.css"],
+                    Type = BundleType.Css
+                }
+            ]
+        });
+
+        Assert.IsTrue(result.IsValid);
+    }
+
+    [TestMethod]
+    public void RejectsBlankManifestOutput()
+    {
+        var validator = new BundleConfigurationValidator();
+        var result = validator.Validate(new BundleConfigurationDocument
+        {
+            Version = 1,
+            ManifestOutput = " ",
+            Bundles =
+            [
+                new AssetBundleDefinition
+                {
+                    Output = "wwwroot/dist/site.min.css",
+                    Inputs = ["wwwroot/css/site.css"],
+                    Type = BundleType.Css
+                }
+            ]
+        });
+
+        Assert.IsFalse(result.IsValid);
+        Assert.IsTrue(result.Messages.Any(message => message.Severity == BuildSeverity.Error));
+    }
+
+    [TestMethod]
+    public void RejectsManifestOutputConflictsWithBundleOutput()
+    {
+        var validator = new BundleConfigurationValidator();
+        var result = validator.Validate(new BundleConfigurationDocument
+        {
+            Version = 1,
+            ManifestOutput = "wwwroot/dist/site.min.css",
+            Bundles =
+            [
+                new AssetBundleDefinition
+                {
+                    Output = "wwwroot/dist/site.min.css",
+                    Inputs = ["wwwroot/css/site.css"],
+                    Type = BundleType.Css
+                }
+            ]
+        });
+
+        Assert.IsFalse(result.IsValid);
+        Assert.IsTrue(result.Messages.Any(message => message.Severity == BuildSeverity.Error));
+    }
+
+    [TestMethod]
     public void RejectsDuplicateOutputs()
     {
         var validator = new BundleConfigurationValidator();

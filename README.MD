@@ -78,7 +78,7 @@ Current capabilities include:
 - configuration validation
 - `check` mode for CI
 - fingerprinting
-- manifest generation
+- manifest generation via `manifestOutput`
 - source maps
 - support for additional asset-related scenarios
 
@@ -133,6 +133,7 @@ Useful MSBuild properties:
 ## Usage
 
 - `build` writes bundled output files.
+- `build` writes bundled output files and any configured manifest.
 - `validate` checks configuration structure only.
 - `check` validates configuration and asset inputs without writing files.
 

@@ -11,6 +11,7 @@ WebBundler is split into small projects so the CLI, MSBuild integration, and fut
 - `WebBundler.Core`
   - defines the main build domain
   - resolves inputs and orchestrates bundle builds
+  - generates manifest documents from build outputs
   - stays free of MSBuild and UI concerns
 - `WebBundler.Minification`
   - provides CSS and JS minifiers
@@ -34,7 +35,8 @@ WebBundler is split into small projects so the CLI, MSBuild integration, and fut
 5. Minify according to bundle type
 6. Optionally fingerprint
 7. Write outputs
-8. Emit diagnostics and exit codes
+8. Optionally generate and write a manifest
+9. Emit diagnostics and exit codes
 
 ## Design goals
 
@@ -47,7 +49,6 @@ WebBundler is split into small projects so the CLI, MSBuild integration, and fut
 ## Near-term extension points
 
 - fingerprinting
-- manifests
 - source maps
 - `check` and `clean` commands
 - future config schema versions

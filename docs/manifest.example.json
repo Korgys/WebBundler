@@ -1,0 +1,15 @@
+{
+  "version": 1,
+  "bundles": {
+    "wwwroot/dist/site.min.css": {
+      "output": "wwwroot/dist/site.min.css",
+      "fingerprinted": false,
+      "type": "css"
+    },
+    "wwwroot/dist/site.min.js": {
+      "output": "wwwroot/dist/site.min.ef56ab78.js",
+      "fingerprinted": true,
+      "type": "js"
+    }
+  }
+}

@@ -5,4 +5,9 @@ public sealed record AssetOutput(
     IReadOnlyList<string> SourceFiles,
     string? Fingerprint = null,
     long? Length = null,
-    string? ContentHash = null);
+    string? ContentHash = null)
+{
+    public string? LogicalOutputPath { get; init; }
+
+    public BundleType? Type { get; init; }
+}

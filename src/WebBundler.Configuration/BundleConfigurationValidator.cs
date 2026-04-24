@@ -59,6 +59,24 @@ public sealed class BundleConfigurationValidator
             }
         }
 
+        if (configuration.ManifestOutput is not null)
+        {
+            if (string.IsNullOrWhiteSpace(configuration.ManifestOutput))
+            {
+                messages.Add(new BuildMessage(
+                    BuildSeverity.Error,
+                    "Manifest output path cannot be empty.",
+                    Path: configuration.ManifestOutput));
+            }
+            else if (outputs.Contains(configuration.ManifestOutput))
+            {
+                messages.Add(new BuildMessage(
+                    BuildSeverity.Error,
+                    $"Manifest output '{configuration.ManifestOutput}' must not conflict with a bundle output.",
+                    Path: configuration.ManifestOutput));
+            }
+        }
+
         return new ConfigurationValidationResult(messages);
     }
 

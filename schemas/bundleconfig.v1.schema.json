@@ -16,6 +16,11 @@
       "const": 1,
       "description": "Configuration schema version."
     },
+    "manifestOutput": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Optional JSON manifest output path written during build."
+    },
     "bundles": {
       "type": "array",
       "minItems": 1,

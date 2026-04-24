@@ -59,7 +59,8 @@ public sealed class CliApplication
                     Path.GetDirectoryName(Path.GetFullPath(configurationPath)) ?? Directory.GetCurrentDirectory(),
                     configurationPath),
                 loadResult.Configuration!.Bundles,
-                WriteOutputs: options.Command == CliCommand.Build));
+                WriteOutputs: options.Command == CliCommand.Build,
+                ManifestOutput: loadResult.Configuration.ManifestOutput));
 
         WriteMessages(buildResult.Messages, stdout, stderr);
         return buildResult.Succeeded ? 0 : 3;

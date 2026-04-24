@@ -1,6 +1,7 @@
 using System.Diagnostics;
 using System.Security.Cryptography;
 using System.Text;
+using System.Text.Json;
 
 namespace WebBundler.IntegrationTests;
 
@@ -252,6 +253,54 @@ public sealed class MsBuildIntegrationTests
     var expectedFingerprint = Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(fingerprintedContent))).ToLowerInvariant()[..8];
     Assert.AreEqual($"site.min.{expectedFingerprint}.js", Path.GetFileName(fingerprintedFiles[0]));
     Assert.IsFalse(File.Exists(workspace.ProjectPath("wwwroot/dist/site.min.js")));
+  }
+
+  [TestMethod]
+  public void ManifestCanBeWrittenWithoutFingerprinting()
+  {
+    using var workspace = new MsBuildWorkspace();
+    workspace.WriteProject("""
+            <Project Sdk="Microsoft.NET.Sdk">
+              <PropertyGroup>
+                <OutputType>Exe</OutputType>
+                <TargetFramework>net10.0</TargetFramework>
+                <ImplicitUsings>enable</ImplicitUsings>
+              </PropertyGroup>
+              <ItemGroup>
+                <PackageReference Include="WebBundler.MSBuild" Version="__WEBBUNDLER_PACKAGE_VERSION__" PrivateAssets="all" />
+              </ItemGroup>
+            </Project>
+            """);
+    workspace.WriteFile("Program.cs", "Console.WriteLine(\"Hello\");");
+    workspace.WriteFile("bundleconfig.json", """
+            {
+              "version": 1,
+              "manifestOutput": "wwwroot/dist/webbundler.manifest.json",
+              "bundles": [
+                {
+                  "output": "wwwroot/dist/site.min.css",
+                  "inputs": [ "wwwroot/css/site.css" ],
+                  "type": "css",
+                  "minify": false
+                }
+              ]
+            }
+            """);
+    workspace.WriteFile("wwwroot/css/site.css", "body { color: black; }\n");
+
+    var result = workspace.RunDotNet(["build", "-c", "Release", "--nologo", "-v:minimal"]);
+
+    Assert.AreEqual(0, result.ExitCode, result.Output);
+    var manifestPath = workspace.ProjectPath("wwwroot/dist/webbundler.manifest.json");
+    Assert.IsTrue(File.Exists(manifestPath));
+
+    using var manifest = JsonDocument.Parse(File.ReadAllText(manifestPath));
+    var entry = manifest.RootElement.GetProperty("bundles").GetProperty("wwwroot/dist/site.min.css");
+    Assert.IsFalse(entry.GetProperty("fingerprinted").GetBoolean());
+    Assert.AreEqual("css", entry.GetProperty("type").GetString());
+    Assert.AreEqual("wwwroot/dist/site.min.css", entry.GetProperty("output").GetString());
+    Assert.IsFalse(Path.IsPathRooted(entry.GetProperty("output").GetString()!));
+    Assert.IsFalse(entry.GetProperty("output").GetString()!.Contains('\\'));
   }
 
   [TestMethod]
