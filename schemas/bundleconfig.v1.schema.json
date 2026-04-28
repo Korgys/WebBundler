@@ -72,7 +72,7 @@
         },
         "sourceMap": {
           "type": "boolean",
-          "description": "Reserved for forward-compatible source map scenarios."
+          "description": "Write a sibling source map file for this bundle during build."
         },
         "environment": {
           "type": "string",

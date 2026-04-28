@@ -27,6 +27,8 @@
 - Glob matching is case-insensitive when resolving candidates.
 - Duplicate outputs are checked with Windows-aware path comparison.
 - Manifest paths are emitted relative to the project root and normalized with `/`.
+- Source map files are emitted as sibling `.map` files next to the bundle output path and are not fingerprinted separately.
+- The `sourceMappingURL` reference in each bundle points to that sibling map file.
 
 See [Configuration](configuration.md) for the full glob syntax and config shape.
 

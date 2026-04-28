@@ -29,13 +29,15 @@ public sealed class BundleBuildServiceTests
                 {
                     Output = "wwwroot/dist/site.min.css",
                     Inputs = ["wwwroot/css/reset.css", "wwwroot/css/site.css"],
-                    Type = BundleType.Css
+                    Type = BundleType.Css,
+                    SourceMap = true
                 },
                 new AssetBundleDefinition
                 {
                     Output = "wwwroot/dist/site.min.js",
                     Inputs = ["wwwroot/js/lib/*.js", "wwwroot/js/site.js"],
-                    Type = BundleType.JavaScript
+                    Type = BundleType.JavaScript,
+                    SourceMap = true
                 }
             ]));
 
@@ -46,8 +48,21 @@ public sealed class BundleBuildServiceTests
         var css = File.ReadAllText(Path.Combine(workspace.Root, "wwwroot/dist/site.min.css"));
         StringAssert.Contains(css, "body{margin:0}");
         StringAssert.Contains(css, "h1{color:red}");
-        StringAssert.Contains(File.ReadAllText(Path.Combine(workspace.Root, "wwwroot/dist/site.min.js")), "window.a = 1;");
-        StringAssert.Contains(File.ReadAllText(Path.Combine(workspace.Root, "wwwroot/dist/site.min.js")), "window.b = 2;");
+        var js = File.ReadAllText(Path.Combine(workspace.Root, "wwwroot/dist/site.min.js"));
+        StringAssert.Contains(js, "window.a = 1;");
+        StringAssert.Contains(js, "window.b = 2;");
+        StringAssert.Contains(css, "sourceMappingURL=site.min.css.map");
+        StringAssert.Contains(js, "sourceMappingURL=site.min.js.map");
+
+        using var cssMap = JsonDocument.Parse(File.ReadAllText(Path.Combine(workspace.Root, "wwwroot/dist/site.min.css.map")));
+        using var jsMap = JsonDocument.Parse(File.ReadAllText(Path.Combine(workspace.Root, "wwwroot/dist/site.min.js.map")));
+
+        CollectionAssert.AreEqual(
+            new[] { "../css/reset.css", "../css/site.css" },
+            cssMap.RootElement.GetProperty("sources").EnumerateArray().Select(element => element.GetString()).ToArray());
+        CollectionAssert.AreEqual(
+            new[] { "../js/lib/a.js", "../js/lib/b.js", "../js/site.js" },
+            jsMap.RootElement.GetProperty("sources").EnumerateArray().Select(element => element.GetString()).ToArray());
     }
 
     [TestMethod]
@@ -70,7 +85,8 @@ public sealed class BundleBuildServiceTests
                     Inputs = ["wwwroot/js/site.js"],
                     Type = BundleType.JavaScript,
                     Minify = false,
-                    Fingerprint = true
+                    Fingerprint = true,
+                    SourceMap = true
                 }
             ],
             ManifestOutput: "wwwroot/dist/webbundler.manifest.json"));
@@ -95,6 +111,35 @@ public sealed class BundleBuildServiceTests
         var fingerprintedContent = File.ReadAllText(fingerprintedFiles[0]);
         var expectedFingerprint = Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(fingerprintedContent))).ToLowerInvariant()[..8];
         Assert.AreEqual($"wwwroot/dist/site.min.{expectedFingerprint}.js", entry.GetProperty("output").GetString());
+
+        var sourceMapPath = Path.Combine(workspace.Root, "wwwroot/dist/site.min.js.map");
+        Assert.IsTrue(File.Exists(sourceMapPath));
+        StringAssert.Contains(File.ReadAllText(fingerprintedFiles[0]), "sourceMappingURL=site.min.js.map");
+
+        using var map = JsonDocument.Parse(File.ReadAllText(sourceMapPath));
+        Assert.AreEqual(Path.GetFileName(fingerprintedFiles[0]), map.RootElement.GetProperty("file").GetString());
+        CollectionAssert.AreEqual(
+            new[] { "../js/site.js" },
+            map.RootElement.GetProperty("sources").EnumerateArray().Select(element => element.GetString()).ToArray());
+
+        var firstMapContent = File.ReadAllText(sourceMapPath);
+        var secondResult = service.Build(new BundleBuildRequest(
+            new BuildContext(workspace.Root),
+            [
+                new AssetBundleDefinition
+                {
+                    Output = "wwwroot/dist/site.min.js",
+                    Inputs = ["wwwroot/js/site.js"],
+                    Type = BundleType.JavaScript,
+                    Minify = false,
+                    Fingerprint = true,
+                    SourceMap = true
+                }
+            ],
+            ManifestOutput: "wwwroot/dist/webbundler.manifest.json"));
+
+        Assert.IsTrue(secondResult.Succeeded);
+        Assert.AreEqual(firstMapContent, File.ReadAllText(sourceMapPath));
     }
 
     [TestMethod]
@@ -143,7 +188,8 @@ public sealed class BundleBuildServiceTests
                     Output = "wwwroot/dist/site.min.css",
                     Inputs = ["wwwroot/css/site.css"],
                     Type = BundleType.Css,
-                    Minify = false
+                    Minify = false,
+                    SourceMap = true
                 }
             ],
             WriteOutputs: false,
@@ -151,6 +197,7 @@ public sealed class BundleBuildServiceTests
 
         Assert.IsTrue(result.Succeeded);
         Assert.IsFalse(File.Exists(Path.Combine(workspace.Root, "wwwroot/dist/webbundler.manifest.json")));
+        Assert.IsFalse(File.Exists(Path.Combine(workspace.Root, "wwwroot/dist/site.min.css.map")));
     }
 
     [TestMethod]

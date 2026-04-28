@@ -35,7 +35,8 @@ public sealed class MsBuildIntegrationTests
                   "output": "wwwroot/dist/site.min.css",
                   "inputs": [ "wwwroot/css/reset.css", "wwwroot/css/site.css" ],
                   "type": "css",
-                  "minify": true
+                  "minify": true,
+                  "sourceMap": true
                 }
               ]
             }
@@ -47,6 +48,8 @@ public sealed class MsBuildIntegrationTests
 
     Assert.AreEqual(0, result.ExitCode, result.Output);
     Assert.IsTrue(File.Exists(workspace.ProjectPath("wwwroot/dist/site.min.css")));
+    Assert.IsTrue(File.Exists(workspace.ProjectPath("wwwroot/dist/site.min.css.map")));
+    StringAssert.Contains(File.ReadAllText(workspace.ProjectPath("wwwroot/dist/site.min.css")), "sourceMappingURL=site.min.css.map");
     Assert.AreEqual(1, CountOccurrences(result.Output, "Built 'wwwroot/dist/site.min.css' from 2 file(s)."));
   }
 
@@ -116,7 +119,8 @@ public sealed class MsBuildIntegrationTests
                   "output": "wwwroot/dist/site.min.css",
                   "inputs": [ "wwwroot/css/site.css" ],
                   "type": "css",
-                  "minify": false
+                  "minify": false,
+                  "sourceMap": true
                 }
               ]
             }
@@ -127,6 +131,7 @@ public sealed class MsBuildIntegrationTests
 
     Assert.AreEqual(0, result.ExitCode, result.Output);
     Assert.IsFalse(File.Exists(workspace.ProjectPath("wwwroot/dist/site.min.css")));
+    Assert.IsFalse(File.Exists(workspace.ProjectPath("wwwroot/dist/site.min.css.map")));
     Assert.AreEqual(1, CountOccurrences(result.Output, "Built 'wwwroot/dist/site.min.css' from 1 file(s)."));
   }
 
@@ -237,7 +242,8 @@ public sealed class MsBuildIntegrationTests
                   "inputs": [ "wwwroot/js/site.js" ],
                   "type": "javascript",
                   "minify": false,
-                  "fingerprint": true
+                  "fingerprint": true,
+                  "sourceMap": true
                 }
               ]
             }
@@ -253,6 +259,8 @@ public sealed class MsBuildIntegrationTests
     var expectedFingerprint = Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(fingerprintedContent))).ToLowerInvariant()[..8];
     Assert.AreEqual($"site.min.{expectedFingerprint}.js", Path.GetFileName(fingerprintedFiles[0]));
     Assert.IsFalse(File.Exists(workspace.ProjectPath("wwwroot/dist/site.min.js")));
+    Assert.IsTrue(File.Exists(workspace.ProjectPath("wwwroot/dist/site.min.js.map")));
+    StringAssert.Contains(fingerprintedContent, "sourceMappingURL=site.min.js.map");
   }
 
   [TestMethod]

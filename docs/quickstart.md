@@ -45,7 +45,8 @@ your-project/
         "wwwroot/js/app.js"
       ],
       "type": "js",
-      "minify": true
+      "minify": true,
+      "sourceMap": true
     }
   ]
 }
@@ -66,6 +67,7 @@ webbundler build --config bundleconfig.json
 - `build` returns `0` and writes:
   - `wwwroot/dist/site.min.css`
   - `wwwroot/dist/site.min.js`
+  - `wwwroot/dist/site.min.js.map` when `sourceMap` is enabled
   - `wwwroot/dist/webbundler.manifest.json` when `manifestOutput` is set
 
 ## Notes
@@ -75,3 +77,4 @@ webbundler build --config bundleconfig.json
 - `type` must be `css` or `js`.
 - `inputs` are processed in order.
 - `manifestOutput` is optional and produces a JSON manifest when `build` runs.
+- `sourceMap` is optional and produces an external `.map` file only when `build` runs.

@@ -79,7 +79,7 @@ Current capabilities include:
 - `check` mode for CI
 - fingerprinting
 - manifest generation via `manifestOutput`
-- source maps
+- source maps for CSS and JavaScript via external sibling `.map` files
 - support for additional asset-related scenarios
 
 ## Design principles

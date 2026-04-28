@@ -97,6 +97,35 @@ public sealed class BundleConfigurationValidatorTests
     }
 
     [TestMethod]
+    public void RejectsSourceMapOutputConflictsWithBundleOutput()
+    {
+        var validator = new BundleConfigurationValidator();
+        var result = validator.Validate(new BundleConfigurationDocument
+        {
+            Version = 1,
+            Bundles =
+            [
+                new AssetBundleDefinition
+                {
+                    Output = "wwwroot/dist/site.min.css",
+                    Inputs = ["wwwroot/css/site.css"],
+                    Type = BundleType.Css,
+                    SourceMap = true
+                },
+                new AssetBundleDefinition
+                {
+                    Output = "wwwroot/dist/site.min.css.map",
+                    Inputs = ["wwwroot/css/theme.css"],
+                    Type = BundleType.Css
+                }
+            ]
+        });
+
+        Assert.IsFalse(result.IsValid);
+        Assert.IsTrue(result.Messages.Any(message => message.Severity == BuildSeverity.Error));
+    }
+
+    [TestMethod]
     public void RejectsDuplicateOutputs()
     {
         var validator = new BundleConfigurationValidator();

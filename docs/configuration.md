@@ -45,6 +45,7 @@ The root document includes a required `version` field. The current version is `1
       ],
       "type": "js",
       "minify": false,
+      "sourceMap": true,
       "fingerprint": true
     }
   ]
@@ -64,7 +65,7 @@ The root document includes a required `version` field. The current version is `1
 | Bundle | `type` | required | `css` or `js`. |
 | Bundle | `minify` | optional | Defaults to `true`. |
 | Bundle | `fingerprint` | optional | Inserts a short hash before the file extension when a fingerprinter is available. |
-| Bundle | `sourceMap` | reserved | Accepted by the parser for forward compatibility. |
+| Bundle | `sourceMap` | optional | Writes an external `.map` file beside the bundle when `build` writes outputs. |
 | Bundle | `environment` | reserved | Accepted by the parser for forward compatibility. |
 | Bundle | `include` | reserved | Accepted by the parser for forward compatibility. |
 | Bundle | `exclude` | reserved | Accepted by the parser for forward compatibility. |
@@ -76,6 +77,7 @@ Current validation checks:
 - supported root `version`
 - at least one bundle
 - unique bundle outputs
+- source map sidecar outputs must not conflict with bundle outputs
 - non-empty inputs per bundle
 - extension hints for `css` and `js` outputs
 - manifest output must not reuse a bundle output path
@@ -98,6 +100,16 @@ Current validation checks:
 When `manifestOutput` is set, `build` writes a deterministic JSON manifest alongside the bundle outputs. Paths in the manifest use forward slashes and are relative to the project root.
 
 Example manifest: [manifest.example.json](manifest.example.json)
+
+## Source Maps
+
+When a bundle sets `sourceMap: true`, `build` writes a sibling `.map` file next to the bundle output. The bundle itself gets a trailing `sourceMappingURL` reference that points at that sibling map file.
+
+- map files are external, not inline
+- map file names stay adjacent to the logical bundle name and are not separately fingerprinted
+- fingerprinted bundles still point at the stable sibling `.map` file beside the final output
+- `validate` and `check` never write map files
+- the map lists original input files in input order and includes `sourcesContent`
 
 ## Cross-Platform Path Behavior
 

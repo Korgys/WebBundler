@@ -29,18 +29,31 @@ public sealed class BundleConfigurationValidator
         {
             var bundle = configuration.Bundles[index];
             var location = bundle.Output;
+            var normalizedOutput = NormalizePath(bundle.Output);
 
             if (string.IsNullOrWhiteSpace(bundle.Output))
             {
                 messages.Add(new BuildMessage(BuildSeverity.Error, $"Bundle #{index + 1} is missing an output path."));
             }
 
-            if (!outputs.Add(bundle.Output))
+            if (!outputs.Add(normalizedOutput))
             {
                 messages.Add(new BuildMessage(
                     BuildSeverity.Error,
                     $"Duplicate bundle output '{bundle.Output}' detected.",
                     Path: bundle.Output));
+            }
+
+            if (bundle.SourceMap == true && !string.IsNullOrWhiteSpace(bundle.Output))
+            {
+                var sourceMapOutput = NormalizePath(GetSourceMapOutputPath(bundle.Output));
+                if (!outputs.Add(sourceMapOutput))
+                {
+                    messages.Add(new BuildMessage(
+                        BuildSeverity.Error,
+                        $"Bundle '{bundle.Output}' source map output '{sourceMapOutput}' conflicts with another output.",
+                        Path: bundle.Output));
+                }
             }
 
             if (bundle.Inputs is null || bundle.Inputs.Count == 0)
@@ -68,7 +81,7 @@ public sealed class BundleConfigurationValidator
                     "Manifest output path cannot be empty.",
                     Path: configuration.ManifestOutput));
             }
-            else if (outputs.Contains(configuration.ManifestOutput))
+            else if (outputs.Contains(NormalizePath(configuration.ManifestOutput)))
             {
                 messages.Add(new BuildMessage(
                     BuildSeverity.Error,
@@ -90,4 +103,9 @@ public sealed class BundleConfigurationValidator
             _ => false
         };
     }
+
+    private static string GetSourceMapOutputPath(string output) =>
+        Path.Combine(Path.GetDirectoryName(output) ?? string.Empty, Path.GetFileName(output) + ".map");
+
+    private static string NormalizePath(string path) => path.Replace('\\', '/').Trim();
 }

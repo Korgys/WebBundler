@@ -31,6 +31,20 @@ public sealed class BundleBuildService
         var messages = new List<BuildMessage>();
         var seenOutputs = new HashSet<string>(GetPathComparer());
         var rootDirectory = NormalizeDirectory(request.Context.RootDirectory);
+        string? manifestOutputPath = null;
+
+        if (!string.IsNullOrWhiteSpace(request.ManifestOutput))
+        {
+            manifestOutputPath = ResolvePath(rootDirectory, request.ManifestOutput);
+            if (!seenOutputs.Add(NormalizePath(manifestOutputPath)))
+            {
+                messages.Add(new BuildMessage(
+                    BuildSeverity.Error,
+                    $"Manifest output path '{request.ManifestOutput}' conflicts with an existing bundle output.",
+                    Path: request.ManifestOutput));
+                manifestOutputPath = null;
+            }
+        }
 
         foreach (var bundle in request.Bundles)
         {
@@ -65,7 +79,9 @@ public sealed class BundleBuildService
                 continue;
             }
 
-            var content = ComposeContent(resolvedInputs.Select(path => fileSystem.ReadAllText(path)));
+            var sourceContents = resolvedInputs.Select(path => fileSystem.ReadAllText(path)).ToList();
+            var content = ComposeContent(sourceContents);
+            var sourceMapOutputPath = default(string?);
 
             if (bundle.Minify)
             {
@@ -81,8 +97,29 @@ public sealed class BundleBuildService
                 content = minifier.Minify(content);
             }
 
+            IAssetMinifier? sourceMapMinifier = null;
+            if (bundle.SourceMap == true)
+            {
+                sourceMapOutputPath = GetSourceMapOutputPath(outputPath);
+                if (!seenOutputs.Add(NormalizePath(sourceMapOutputPath)))
+                {
+                    messages.Add(new BuildMessage(
+                        BuildSeverity.Error,
+                        $"Bundle '{bundle.Output}' source map output path '{sourceMapOutputPath}' conflicts with an existing output.",
+                        Path: bundle.Output));
+                    continue;
+                }
+
+                content = AppendSourceMapReference(content, fileSystem.GetFileName(sourceMapOutputPath), bundle.Type);
+                if (bundle.Minify)
+                {
+                    sourceMapMinifier = minifiers[bundle.Type];
+                }
+            }
+
             var finalOutputPath = outputPath;
             var fingerprint = default(FingerprintResult);
+            var didFingerprint = false;
             if (bundle.Fingerprint == true)
             {
                 if (fingerprinter is null)
@@ -96,6 +133,19 @@ public sealed class BundleBuildService
                 {
                     fingerprint = fingerprinter.Fingerprint(outputPath, content);
                     finalOutputPath = ResolvePath(rootDirectory, fingerprint.FingerprintedPath);
+                    didFingerprint = true;
+                }
+            }
+
+            if (didFingerprint)
+            {
+                if (!seenOutputs.Add(NormalizePath(finalOutputPath)))
+                {
+                    messages.Add(new BuildMessage(
+                        BuildSeverity.Error,
+                        $"Bundle '{bundle.Output}' resolves to a final output path that conflicts with an existing output.",
+                        Path: bundle.Output));
+                    continue;
                 }
             }
 
@@ -103,6 +153,20 @@ public sealed class BundleBuildService
             {
                 fileSystem.CreateDirectory(fileSystem.GetDirectoryName(finalOutputPath));
                 fileSystem.WriteAllText(finalOutputPath, content);
+
+                if (sourceMapOutputPath is not null)
+                {
+                    var sourceMapContent = SourceMapService.Create(
+                        finalOutputPath,
+                        sourceMapOutputPath,
+                        resolvedInputs,
+                        sourceContents,
+                        bundle.Minify,
+                        sourceMapMinifier);
+
+                    fileSystem.CreateDirectory(fileSystem.GetDirectoryName(sourceMapOutputPath));
+                    fileSystem.WriteAllText(sourceMapOutputPath, sourceMapContent);
+                }
             }
 
             outputs.Add(new AssetOutput(
@@ -123,27 +187,17 @@ public sealed class BundleBuildService
         }
 
         if (!messages.Any(message => message.Severity == BuildSeverity.Error) &&
-            !string.IsNullOrWhiteSpace(request.ManifestOutput))
+            manifestOutputPath is not null &&
+            request.WriteOutputs)
         {
-            var manifestOutputPath = ResolvePath(rootDirectory, request.ManifestOutput);
-            if (!seenOutputs.Add(NormalizePath(manifestOutputPath)))
-            {
-                messages.Add(new BuildMessage(
-                    BuildSeverity.Error,
-                    $"Manifest output path '{request.ManifestOutput}' conflicts with an existing bundle output.",
-                    Path: request.ManifestOutput));
-            }
-            else if (request.WriteOutputs)
-            {
-                var manifest = manifestService.Create(rootDirectory, outputs);
-                var manifestContent = manifestService.Serialize(manifest);
-                fileSystem.CreateDirectory(fileSystem.GetDirectoryName(manifestOutputPath));
-                fileSystem.WriteAllText(manifestOutputPath, manifestContent);
-                messages.Add(new BuildMessage(
-                    BuildSeverity.Info,
-                    $"Wrote manifest '{request.ManifestOutput}'.",
-                    Path: request.ManifestOutput));
-            }
+            var manifest = manifestService.Create(rootDirectory, outputs);
+            var manifestContent = manifestService.Serialize(manifest);
+            fileSystem.CreateDirectory(fileSystem.GetDirectoryName(manifestOutputPath));
+            fileSystem.WriteAllText(manifestOutputPath, manifestContent);
+            messages.Add(new BuildMessage(
+                BuildSeverity.Info,
+                $"Wrote manifest '{request.ManifestOutput}'.",
+                Path: request.ManifestOutput));
         }
 
         return new BundleBuildResult(outputs, messages);
@@ -233,6 +287,28 @@ public sealed class BundleBuildService
 
     private static string ComposeContent(IEnumerable<string> segments) =>
         string.Join("\n", segments.Select(segment => segment.TrimEnd()));
+
+    private static string AppendSourceMapReference(string content, string sourceMapFileName, BundleType type) =>
+        string.IsNullOrEmpty(content)
+            ? SourceMapComment(sourceMapFileName, type)
+            : $"{content} {SourceMapComment(sourceMapFileName, type)}";
+
+    private static string SourceMapComment(string sourceMapFileName, BundleType type) =>
+        type switch
+        {
+            BundleType.Css => $"/*# sourceMappingURL={sourceMapFileName} */",
+            BundleType.JavaScript => $"//# sourceMappingURL={sourceMapFileName}",
+            _ => throw new ArgumentOutOfRangeException(nameof(type), type, null)
+        };
+
+    private static string GetSourceMapOutputPath(string outputPath)
+    {
+        var directory = Path.GetDirectoryName(outputPath) ?? string.Empty;
+        var fileName = Path.GetFileName(outputPath) + ".map";
+        return string.IsNullOrEmpty(directory)
+            ? fileName
+            : Path.Combine(directory, fileName);
+    }
 
     private static string ComputeHash(string content)
     {

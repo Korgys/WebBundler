@@ -71,13 +71,15 @@ public sealed class CliApplicationTests
                   "output": "wwwroot/dist/site.min.css",
                   "inputs": [ "wwwroot/css/site.css" ],
                   "type": "css",
-                  "minify": true
+                  "minify": true,
+                  "sourceMap": true
                 },
                 {
                   "output": "wwwroot/dist/site.min.js",
                   "inputs": [ "wwwroot/js/site.js" ],
                   "type": "js",
-                  "minify": true
+                  "minify": true,
+                  "sourceMap": true
                 }
               ]
             }
@@ -93,8 +95,12 @@ public sealed class CliApplicationTests
         Assert.AreEqual(0, exitCode);
         Assert.IsTrue(File.Exists(Path.Combine(workspace.Root, "wwwroot/dist/site.min.css")));
         Assert.IsTrue(File.Exists(Path.Combine(workspace.Root, "wwwroot/dist/site.min.js")));
+        Assert.IsTrue(File.Exists(Path.Combine(workspace.Root, "wwwroot/dist/site.min.css.map")));
+        Assert.IsTrue(File.Exists(Path.Combine(workspace.Root, "wwwroot/dist/site.min.js.map")));
         StringAssert.Contains(File.ReadAllText(Path.Combine(workspace.Root, "wwwroot/dist/site.min.css")), "body{color:red}");
+        StringAssert.Contains(File.ReadAllText(Path.Combine(workspace.Root, "wwwroot/dist/site.min.css")), "sourceMappingURL=site.min.css.map");
         StringAssert.Contains(File.ReadAllText(Path.Combine(workspace.Root, "wwwroot/dist/site.min.js")), "const value = 1;");
+        StringAssert.Contains(File.ReadAllText(Path.Combine(workspace.Root, "wwwroot/dist/site.min.js")), "sourceMappingURL=site.min.js.map");
     }
 
     [TestMethod]
@@ -122,6 +128,34 @@ public sealed class CliApplicationTests
 
         Assert.AreEqual(0, exitCode);
         Assert.IsFalse(File.Exists(Path.Combine(workspace.Root, "wwwroot/dist/site.min.css")));
+    }
+
+    [TestMethod]
+    public void CheckCommandDoesNotWriteSourceMaps()
+    {
+        using var workspace = new TestWorkspace();
+        workspace.Write(
+            "bundleconfig.json",
+            """
+            {
+              "version": 1,
+              "bundles": [
+                {
+                  "output": "wwwroot/dist/site.min.css",
+                  "inputs": [ "wwwroot/css/site.css" ],
+                  "type": "css",
+                  "minify": true,
+                  "sourceMap": true
+                }
+              ]
+            }
+            """);
+        workspace.Write("wwwroot/css/site.css", "body { color: red; }\n");
+
+        var exitCode = new CliApplication().Run(["check", "--config", workspace.ConfigPath], new StringWriter(), new StringWriter());
+
+        Assert.AreEqual(0, exitCode);
+        Assert.IsFalse(File.Exists(Path.Combine(workspace.Root, "wwwroot/dist/site.min.css.map")));
     }
 
     [TestMethod]
