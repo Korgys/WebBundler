@@ -174,6 +174,12 @@ public sealed class CliIntegrationTests
             var sampleRoot = Path.Combine(repoRoot, "samples", sampleName);
             Root = Path.Combine(Path.GetTempPath(), "WebBundler.Tests", Guid.NewGuid().ToString("N"));
             CopyDirectory(sampleRoot, Root);
+            var outputRoot = Path.Combine(Root, "wwwroot", "dist");
+            if (Directory.Exists(outputRoot))
+            {
+                Directory.Delete(outputRoot, recursive: true);
+            }
+
             BundleConfigPath = Path.Combine(Root, "bundleconfig.json");
         }
 
