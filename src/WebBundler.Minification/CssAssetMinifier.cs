@@ -5,9 +5,10 @@ namespace WebBundler.Minification;
 
 public sealed class CssAssetMinifier : IAssetMinifier
 {
-    private static readonly Regex BlockComments = new(@"/\*.*?\*/", RegexOptions.Singleline | RegexOptions.Compiled);
-    private static readonly Regex Whitespace = new(@"\s+", RegexOptions.Compiled);
-    private static readonly Regex TrimSpacesAroundTokens = new(@"\s*([{}:;,>+~])\s*", RegexOptions.Compiled);
+    private static readonly TimeSpan RegexMatchTimeout = TimeSpan.FromSeconds(2);
+    private static readonly Regex BlockComments = new(@"/\*.*?\*/", RegexOptions.Singleline | RegexOptions.Compiled, RegexMatchTimeout);
+    private static readonly Regex Whitespace = new(@"\s+", RegexOptions.Compiled, RegexMatchTimeout);
+    private static readonly Regex TrimSpacesAroundTokens = new(@"\s*([{}:;,>+~])\s*", RegexOptions.Compiled, RegexMatchTimeout);
 
     public BundleType SupportedType => BundleType.Css;
 

@@ -499,6 +499,39 @@ public sealed class BundleBuildServiceTests
     }
 
     [TestMethod]
+    public void GlobMatchingRespectsPlatformCaseSensitivity()
+    {
+        using var workspace = new TestWorkspace();
+        workspace.Write("assets/UPPER.JS", "window.upper = true;\n");
+        workspace.Write("assets/lower.js", "window.lower = true;\n");
+
+        var service = new BundleBuildService(DefaultAssetMinifiers.Create(), fileSystem: new PhysicalAssetFileSystem());
+        var result = service.Build(new BundleBuildRequest(
+            new BuildContext(workspace.Root),
+            [
+                new AssetBundleDefinition
+                {
+                    Output = "dist/site.js",
+                    Inputs = ["assets/*.js"],
+                    Type = BundleType.JavaScript,
+                    Minify = false
+                }
+            ]));
+
+        Assert.IsTrue(result.Succeeded);
+        var output = File.ReadAllText(Path.Combine(workspace.Root, "dist/site.js"));
+        StringAssert.Contains(output, "window.lower = true;");
+        if (OperatingSystem.IsWindows())
+        {
+            StringAssert.Contains(output, "window.upper = true;");
+        }
+        else
+        {
+            Assert.IsFalse(output.Contains("window.upper = true;", StringComparison.Ordinal));
+        }
+    }
+
+    [TestMethod]
     public void BuildRejectsNullRequest()
     {
         var service = new BundleBuildService(DefaultAssetMinifiers.Create(), fileSystem: new PhysicalAssetFileSystem());

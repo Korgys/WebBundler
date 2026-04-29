@@ -6,6 +6,7 @@ namespace WebBundler.Core;
 
 public sealed class BundleBuildService
 {
+    private static readonly TimeSpan RegexMatchTimeout = TimeSpan.FromSeconds(2);
     private readonly IAssetFileSystem fileSystem;
     private readonly IReadOnlyDictionary<BundleType, IAssetMinifier> minifiers;
     private readonly IAssetFingerprinter? fingerprinter;
@@ -272,7 +273,8 @@ public sealed class BundleBuildService
 
         var regex = new Regex(
             "^" + GlobToRegex(Path.GetRelativePath(rootDirectory, absolutePattern)) + "$",
-            RegexOptions.IgnoreCase | RegexOptions.CultureInvariant);
+            GetGlobRegexOptions(),
+            RegexMatchTimeout);
 
         foreach (var candidate in fileSystem.EnumerateFiles(searchRoot, recursive: true)
                      .OrderBy(path => NormalizePath(path), StringComparer.Ordinal))
@@ -335,6 +337,10 @@ public sealed class BundleBuildService
         OperatingSystem.IsWindows()
             ? StringComparer.OrdinalIgnoreCase
             : StringComparer.Ordinal;
+
+    private static RegexOptions GetGlobRegexOptions() =>
+        (OperatingSystem.IsWindows() ? RegexOptions.IgnoreCase : RegexOptions.None) |
+        RegexOptions.CultureInvariant;
 
     private static string GetSearchRoot(string rootDirectory, string pattern)
     {
