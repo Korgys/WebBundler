@@ -28,5 +28,13 @@ public sealed class PhysicalAssetFileSystem : IAssetFileSystem
     public void WriteAllText(string path, string content) =>
         File.WriteAllText(path, content, new UTF8Encoding(encoderShouldEmitUTF8Identifier: false));
 
-    public void CreateDirectory(string path) => Directory.CreateDirectory(path);
+    public void CreateDirectory(string path)
+    {
+        if (string.IsNullOrWhiteSpace(path))
+        {
+            return;
+        }
+
+        Directory.CreateDirectory(path);
+    }
 }

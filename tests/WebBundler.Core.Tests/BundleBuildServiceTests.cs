@@ -472,6 +472,32 @@ public sealed class BundleBuildServiceTests
         Assert.HasCount(1, result.Outputs);
     }
 
+    [TestMethod]
+    public void SupportsWritingBundleAtWorkspaceRoot()
+    {
+        using var workspace = new TestWorkspace();
+        workspace.Write("assets/site.js", "window.site = true;\n");
+
+        var service = new BundleBuildService(DefaultAssetMinifiers.Create(), fileSystem: new PhysicalAssetFileSystem());
+        var result = service.Build(new BundleBuildRequest(
+            new BuildContext(workspace.Root),
+            [
+                new AssetBundleDefinition
+                {
+                    Output = "bundle.js",
+                    Inputs = ["assets/site.js"],
+                    Type = BundleType.JavaScript,
+                    Minify = false
+                }
+            ],
+            ManifestOutput: "manifest.json"));
+
+        Assert.IsTrue(result.Succeeded);
+        Assert.IsTrue(File.Exists(Path.Combine(workspace.Root, "bundle.js")));
+        Assert.IsTrue(File.Exists(Path.Combine(workspace.Root, "manifest.json")));
+        StringAssert.Contains(File.ReadAllText(Path.Combine(workspace.Root, "bundle.js")), "window.site = true;");
+    }
+
     private sealed class TestWorkspace : IDisposable
     {
         public TestWorkspace()
