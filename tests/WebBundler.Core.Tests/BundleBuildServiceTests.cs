@@ -498,6 +498,117 @@ public sealed class BundleBuildServiceTests
         StringAssert.Contains(File.ReadAllText(Path.Combine(workspace.Root, "bundle.js")), "window.site = true;");
     }
 
+    [TestMethod]
+    public void BuildRejectsNullRequest()
+    {
+        var service = new BundleBuildService(DefaultAssetMinifiers.Create(), fileSystem: new PhysicalAssetFileSystem());
+
+        AssertThrows<ArgumentNullException>(() => service.Build(null!));
+    }
+
+    [TestMethod]
+    public void BuildRejectsNullContext()
+    {
+        var service = new BundleBuildService(DefaultAssetMinifiers.Create(), fileSystem: new PhysicalAssetFileSystem());
+
+        AssertThrows<ArgumentNullException>(() => service.Build(new BundleBuildRequest(null!, [])));
+    }
+
+    [TestMethod]
+    public void EmptyBundleOutputProducesAnError()
+    {
+        using var workspace = new TestWorkspace();
+
+        var service = new BundleBuildService(DefaultAssetMinifiers.Create(), fileSystem: new PhysicalAssetFileSystem());
+        var result = service.Build(new BundleBuildRequest(
+            new BuildContext(workspace.Root),
+            [
+                new AssetBundleDefinition
+                {
+                    Output = " ",
+                    Inputs = ["assets/site.css"],
+                    Type = BundleType.Css
+                }
+            ],
+            WriteOutputs: false));
+
+        Assert.IsFalse(result.Succeeded);
+        Assert.IsTrue(result.Messages.Any(message => message.Message == "Bundle output path is required."));
+        Assert.HasCount(0, result.Outputs);
+    }
+
+    [TestMethod]
+    public void EmptyInputPatternProducesAnError()
+    {
+        using var workspace = new TestWorkspace();
+
+        var service = new BundleBuildService(DefaultAssetMinifiers.Create(), fileSystem: new PhysicalAssetFileSystem());
+        var result = service.Build(new BundleBuildRequest(
+            new BuildContext(workspace.Root),
+            [
+                new AssetBundleDefinition
+                {
+                    Output = "dist/site.css",
+                    Inputs = [" "],
+                    Type = BundleType.Css
+                }
+            ],
+            WriteOutputs: false));
+
+        Assert.IsFalse(result.Succeeded);
+        Assert.IsTrue(result.Messages.Any(message => message.Message.Contains("contains an empty input pattern", StringComparison.Ordinal)));
+        Assert.HasCount(0, result.Outputs);
+    }
+
+    [TestMethod]
+    public void SourceMapOutputConflictsWithExistingOutput()
+    {
+        using var workspace = new TestWorkspace();
+        workspace.Write("assets/map.css", "body { color: red; }\n");
+        workspace.Write("assets/site.css", "body { color: blue; }\n");
+
+        var service = new BundleBuildService(DefaultAssetMinifiers.Create(), fileSystem: new PhysicalAssetFileSystem());
+        var result = service.Build(new BundleBuildRequest(
+            new BuildContext(workspace.Root),
+            [
+                new AssetBundleDefinition
+                {
+                    Output = "dist/site.css.map",
+                    Inputs = ["assets/map.css"],
+                    Type = BundleType.Css,
+                    Minify = false
+                },
+                new AssetBundleDefinition
+                {
+                    Output = "dist/site.css",
+                    Inputs = ["assets/site.css"],
+                    Type = BundleType.Css,
+                    SourceMap = true
+                }
+            ]));
+
+        Assert.IsFalse(result.Succeeded);
+        Assert.HasCount(1, result.Outputs);
+        Assert.IsTrue(result.Messages.Any(message => message.Message.Contains("source map output path", StringComparison.Ordinal)));
+        Assert.IsTrue(File.Exists(Path.Combine(workspace.Root, "dist/site.css.map")));
+        Assert.IsFalse(File.Exists(Path.Combine(workspace.Root, "dist/site.css")));
+    }
+
+    private static void AssertThrows<TException>(Action action)
+        where TException : Exception
+    {
+        try
+        {
+            action();
+        }
+        catch (TException)
+        {
+            return;
+        }
+
+        Assert.Fail($"Expected exception of type {typeof(TException).FullName}.");
+    }
+
     private sealed class TestWorkspace : IDisposable
     {
         public TestWorkspace()

@@ -33,6 +33,45 @@ public sealed class CliApplicationTests
     }
 
     [TestMethod]
+    public void HelpCommandShowsHelp()
+    {
+        var stdout = new StringWriter();
+        var stderr = new StringWriter();
+
+        var exitCode = new CliApplication().Run(["help"], stdout, stderr);
+
+        Assert.AreEqual(0, exitCode);
+        StringAssert.Contains(stdout.ToString(), "webbundler build");
+        Assert.AreEqual(string.Empty, stderr.ToString());
+    }
+
+    [TestMethod]
+    public void CommandHelpDoesNotRequireConfigurationFile()
+    {
+        var stdout = new StringWriter();
+        var stderr = new StringWriter();
+
+        var exitCode = new CliApplication().Run(["build", "--help"], stdout, stderr);
+
+        Assert.AreEqual(0, exitCode);
+        StringAssert.Contains(stdout.ToString(), "Usage:");
+        Assert.AreEqual(string.Empty, stderr.ToString());
+    }
+
+    [TestMethod]
+    public void UnknownArgumentReturnsAnError()
+    {
+        var stdout = new StringWriter();
+        var stderr = new StringWriter();
+
+        var exitCode = new CliApplication().Run(["build", "--bogus"], stdout, stderr);
+
+        Assert.AreEqual(1, exitCode);
+        StringAssert.Contains(stderr.ToString(), "Unknown argument '--bogus'.");
+        StringAssert.Contains(stdout.ToString(), "Usage:");
+    }
+
+    [TestMethod]
     public void MissingConfigurationValueReturnsAnError()
     {
         var stdout = new StringWriter();
@@ -101,6 +140,65 @@ public sealed class CliApplicationTests
         StringAssert.Contains(File.ReadAllText(Path.Combine(workspace.Root, "wwwroot/dist/site.min.css")), "sourceMappingURL=site.min.css.map");
         StringAssert.Contains(File.ReadAllText(Path.Combine(workspace.Root, "wwwroot/dist/site.min.js")), "const value = 1;");
         StringAssert.Contains(File.ReadAllText(Path.Combine(workspace.Root, "wwwroot/dist/site.min.js")), "sourceMappingURL=site.min.js.map");
+    }
+
+    [TestMethod]
+    public void BuildCommandSupportsShortConfigAlias()
+    {
+        using var workspace = new TestWorkspace();
+        workspace.Write(
+            "bundleconfig.json",
+            """
+            {
+              "version": 1,
+              "bundles": [
+                {
+                  "output": "wwwroot/dist/site.min.css",
+                  "inputs": [ "wwwroot/css/site.css" ],
+                  "type": "css",
+                  "minify": false
+                }
+              ]
+            }
+            """);
+        workspace.Write("wwwroot/css/site.css", "body { color: red; }\n");
+
+        var exitCode = new CliApplication().Run(["build", "-c", workspace.ConfigPath], new StringWriter(), new StringWriter());
+
+        Assert.AreEqual(0, exitCode);
+        Assert.AreEqual("body { color: red; }", File.ReadAllText(Path.Combine(workspace.Root, "wwwroot/dist/site.min.css")));
+    }
+
+    [TestMethod]
+    public void BuildCommandWritesManifestWhenConfigured()
+    {
+        using var workspace = new TestWorkspace();
+        workspace.Write(
+            "bundleconfig.json",
+            """
+            {
+              "version": 1,
+              "manifestOutput": "wwwroot/dist/webbundler.manifest.json",
+              "bundles": [
+                {
+                  "output": "wwwroot/dist/site.min.css",
+                  "inputs": [ "wwwroot/css/site.css" ],
+                  "type": "css",
+                  "minify": false,
+                  "fingerprint": true
+                }
+              ]
+            }
+            """);
+        workspace.Write("wwwroot/css/site.css", "body { color: red; }\n");
+
+        var exitCode = new CliApplication().Run(["build", "--config", workspace.ConfigPath], new StringWriter(), new StringWriter());
+
+        Assert.AreEqual(0, exitCode);
+        var manifest = File.ReadAllText(Path.Combine(workspace.Root, "wwwroot/dist/webbundler.manifest.json"));
+        StringAssert.Contains(manifest, "\"fingerprinted\": true");
+        StringAssert.Contains(manifest, "\"wwwroot/dist/site.min.css\"");
+        Assert.HasCount(1, Directory.GetFiles(Path.Combine(workspace.Root, "wwwroot/dist"), "site.min.*.css"));
     }
 
     [TestMethod]
