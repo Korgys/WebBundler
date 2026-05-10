@@ -114,7 +114,9 @@ public sealed class BundleBuildServiceTests
 
         var sourceMapPath = Path.Combine(workspace.Root, "wwwroot/dist/site.min.js.map");
         Assert.IsTrue(File.Exists(sourceMapPath));
-        StringAssert.Contains(File.ReadAllText(fingerprintedFiles[0]), "sourceMappingURL=site.min.js.map");
+        StringAssert.Contains(
+            File.ReadAllText(fingerprintedFiles[0]),
+            $"sourceMappingURL={Path.GetFileName(sourceMapPath)}");
 
         using var map = JsonDocument.Parse(File.ReadAllText(sourceMapPath));
         Assert.AreEqual(Path.GetFileName(fingerprintedFiles[0]), map.RootElement.GetProperty("file").GetString());
@@ -140,6 +142,102 @@ public sealed class BundleBuildServiceTests
 
         Assert.IsTrue(secondResult.Succeeded);
         Assert.AreEqual(firstMapContent, File.ReadAllText(sourceMapPath));
+    }
+
+    [TestMethod]
+    public void FingerprintAndSourceMapUseFinalizedOutputName()
+    {
+        using var workspace = new TestWorkspace();
+        workspace.Write("wwwroot/js/site.js", "window.site = true;\n");
+
+        var service = new BundleBuildService(
+            DefaultAssetMinifiers.Create(),
+            new Sha256AssetFingerprinter(),
+            new PhysicalAssetFileSystem());
+
+        var result = service.Build(new BundleBuildRequest(
+            new BuildContext(workspace.Root),
+            [
+                new AssetBundleDefinition
+                {
+                    Output = "wwwroot/dist/site.min.js",
+                    Inputs = ["wwwroot/js/site.js"],
+                    Type = BundleType.JavaScript,
+                    Fingerprint = true,
+                    SourceMap = true
+                }
+            ]));
+
+        Assert.IsTrue(result.Succeeded);
+        Assert.HasCount(1, result.Outputs);
+
+        var outputPath = result.Outputs[0].OutputPath;
+        var sourceMapPath = Path.Combine(workspace.Root, "wwwroot/dist/site.min.js.map");
+        Assert.IsTrue(File.Exists(sourceMapPath));
+        StringAssert.Contains(File.ReadAllText(outputPath), $"sourceMappingURL={Path.GetFileName(sourceMapPath)}");
+    }
+
+    [TestMethod]
+    public void ReportsConflictWhenBundleOutputMatchesAnotherBundlesSourceMap()
+    {
+        using var workspace = new TestWorkspace();
+        workspace.Write("wwwroot/js/one.js", "window.one = true;\n");
+        workspace.Write("wwwroot/js/two.js", "window.two = true;\n");
+
+        var service = new BundleBuildService(DefaultAssetMinifiers.Create(), fileSystem: new PhysicalAssetFileSystem());
+        var result = service.Build(new BundleBuildRequest(
+            new BuildContext(workspace.Root),
+            [
+                new AssetBundleDefinition
+                {
+                    Output = "wwwroot/dist/site.js",
+                    Inputs = ["wwwroot/js/one.js"],
+                    Type = BundleType.JavaScript,
+                    SourceMap = true
+                },
+                new AssetBundleDefinition
+                {
+                    Output = "wwwroot/dist/site.js.map",
+                    Inputs = ["wwwroot/js/two.js"],
+                    Type = BundleType.JavaScript
+                }
+            ],
+            WriteOutputs: false));
+
+        Assert.IsFalse(result.Succeeded);
+        Assert.IsTrue(result.Messages.Any(message =>
+            message.Severity == BuildSeverity.Error &&
+            message.Message.Contains("conflicts", StringComparison.OrdinalIgnoreCase)));
+    }
+
+    [TestMethod]
+    public void ReportsManifestCollisionWithFinalFingerprintedOutput()
+    {
+        using var workspace = new TestWorkspace();
+        workspace.Write("wwwroot/js/site.js", "window.site = true;\n");
+
+        var service = new BundleBuildService(
+            DefaultAssetMinifiers.Create(),
+            new FixedAssetFingerprinter("wwwroot/dist/webbundler.manifest.json"),
+            new PhysicalAssetFileSystem());
+        var result = service.Build(new BundleBuildRequest(
+            new BuildContext(workspace.Root),
+            [
+                new AssetBundleDefinition
+                {
+                    Output = "wwwroot/dist/site.js",
+                    Inputs = ["wwwroot/js/site.js"],
+                    Type = BundleType.JavaScript,
+                    Fingerprint = true
+                }
+            ],
+            WriteOutputs: false,
+            ManifestOutput: "wwwroot/dist/webbundler.manifest.json"));
+
+        Assert.IsFalse(result.Succeeded);
+        Assert.IsTrue(result.Messages.Any(message =>
+            message.Severity == BuildSeverity.Error &&
+            message.Path == "wwwroot/dist/site.js"));
     }
 
     [TestMethod]
@@ -325,7 +423,7 @@ public sealed class BundleBuildServiceTests
                     Type = BundleType.Css
                 }
             ],
-            ManifestOutput: "dist/site.css"));
+            ManifestOutput: "dist/webbundler.manifest.json"));
 
         Assert.IsFalse(result.Succeeded);
         Assert.IsTrue(result.Messages.Any(message => message.Message.Contains("resolve to the same output path", StringComparison.OrdinalIgnoreCase)));
@@ -499,7 +597,7 @@ public sealed class BundleBuildServiceTests
 
         Assert.IsFalse(result.Succeeded);
         Assert.IsTrue(result.Messages.Any(message => message.Severity == BuildSeverity.Error));
-        Assert.HasCount(1, result.Outputs);
+        Assert.HasCount(0, result.Outputs);
     }
 
     [TestMethod]
@@ -670,6 +768,12 @@ public sealed class BundleBuildServiceTests
         }
 
         Assert.Fail($"Expected exception of type {typeof(TException).FullName}.");
+    }
+
+    private sealed class FixedAssetFingerprinter(string fingerprintedPath) : IAssetFingerprinter
+    {
+        public FingerprintResult Fingerprint(string logicalOutputPath, string content) =>
+            new(logicalOutputPath, fingerprintedPath, "fixed");
     }
 
     private sealed class TestWorkspace : IDisposable

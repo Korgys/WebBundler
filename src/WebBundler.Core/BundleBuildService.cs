@@ -47,6 +47,12 @@ public sealed class BundleBuildService
             }
         }
 
+        AddDuplicateOutputMessages(request.Bundles, rootDirectory, messages);
+        if (messages.Any(message => message.Severity == BuildSeverity.Error))
+        {
+            return new BundleBuildResult(outputs, messages);
+        }
+
         foreach (var bundle in request.Bundles)
         {
             if (string.IsNullOrWhiteSpace(bundle.Output))
@@ -71,14 +77,6 @@ public sealed class BundleBuildService
             }
 
             var outputPath = ResolvePath(rootDirectory, bundle.Output);
-            if (!seenOutputs.Add(NormalizePath(outputPath)))
-            {
-                messages.Add(new BuildMessage(
-                    BuildSeverity.Error,
-                    $"Multiple bundles resolve to the same output path '{bundle.Output}'.",
-                    Path: bundle.Output));
-                continue;
-            }
 
             var sourceContents = resolvedInputs.Select(path => fileSystem.ReadAllText(path)).ToList();
             var content = ComposeContent(sourceContents);
@@ -99,18 +97,10 @@ public sealed class BundleBuildService
             }
 
             IAssetMinifier? sourceMapMinifier = null;
+
             if (bundle.SourceMap == true)
             {
                 sourceMapOutputPath = GetSourceMapOutputPath(outputPath);
-                if (!seenOutputs.Add(NormalizePath(sourceMapOutputPath)))
-                {
-                    messages.Add(new BuildMessage(
-                        BuildSeverity.Error,
-                        $"Bundle '{bundle.Output}' source map output path '{sourceMapOutputPath}' conflicts with an existing output.",
-                        Path: bundle.Output));
-                    continue;
-                }
-
                 content = AppendSourceMapReference(content, fileSystem.GetFileName(sourceMapOutputPath), bundle.Type);
                 if (bundle.Minify)
                 {
@@ -138,16 +128,42 @@ public sealed class BundleBuildService
                 }
             }
 
+            var candidateOutputs = new List<string> { outputPath };
             if (didFingerprint)
             {
-                if (!seenOutputs.Add(NormalizePath(finalOutputPath)))
-                {
-                    messages.Add(new BuildMessage(
-                        BuildSeverity.Error,
-                        $"Bundle '{bundle.Output}' resolves to a final output path that conflicts with an existing output.",
-                        Path: bundle.Output));
-                    continue;
-                }
+                candidateOutputs.Add(finalOutputPath);
+            }
+
+            if (sourceMapOutputPath is not null)
+            {
+                candidateOutputs.Add(sourceMapOutputPath);
+            }
+
+            if (seenOutputs.Contains(NormalizePath(outputPath)))
+            {
+                messages.Add(new BuildMessage(
+                    BuildSeverity.Error,
+                    $"Multiple bundles resolve to the same output path '{bundle.Output}', which conflicts with an existing output.",
+                    Path: bundle.Output));
+                continue;
+            }
+
+            if (sourceMapOutputPath is not null && seenOutputs.Contains(NormalizePath(sourceMapOutputPath)))
+            {
+                messages.Add(new BuildMessage(
+                    BuildSeverity.Error,
+                    $"Bundle '{bundle.Output}' source map output path conflicts with an existing output.",
+                    Path: bundle.Output));
+                continue;
+            }
+
+            if (!TryReserveOutputs(seenOutputs, candidateOutputs))
+            {
+                messages.Add(new BuildMessage(
+                    BuildSeverity.Error,
+                    $"Bundle '{bundle.Output}' output or source map path conflicts with an existing output.",
+                    Path: bundle.Output));
+                continue;
             }
 
             if (request.WriteOutputs)
@@ -250,26 +266,37 @@ public sealed class BundleBuildService
             }
 
             var outputPath = ResolvePath(rootDirectory, bundle.Output);
-            if (!seenOutputs.Add(NormalizePath(outputPath)))
+            var sourceMapOutputPath = bundle.SourceMap == true
+                ? GetSourceMapOutputPath(outputPath)
+                : null;
+            var candidateOutputs = sourceMapOutputPath is null
+                ? new List<string> { outputPath }
+                : new List<string> { outputPath, sourceMapOutputPath };
+            if (seenOutputs.Contains(NormalizePath(outputPath)))
             {
                 messages.Add(new BuildMessage(
                     BuildSeverity.Error,
-                    $"Multiple bundles resolve to the same output path '{bundle.Output}'.",
+                    $"Multiple bundles resolve to the same output path '{bundle.Output}', which conflicts with an existing output.",
                     Path: bundle.Output));
                 continue;
             }
 
-            if (bundle.SourceMap == true)
+            if (sourceMapOutputPath is not null && seenOutputs.Contains(NormalizePath(sourceMapOutputPath)))
             {
-                var sourceMapOutputPath = GetSourceMapOutputPath(outputPath);
-                if (!seenOutputs.Add(NormalizePath(sourceMapOutputPath)))
-                {
-                    messages.Add(new BuildMessage(
-                        BuildSeverity.Error,
-                        $"Bundle '{bundle.Output}' source map output path '{sourceMapOutputPath}' conflicts with an existing output.",
-                        Path: bundle.Output));
-                    continue;
-                }
+                messages.Add(new BuildMessage(
+                    BuildSeverity.Error,
+                    $"Bundle '{bundle.Output}' source map output path conflicts with an existing output.",
+                    Path: bundle.Output));
+                continue;
+            }
+
+            if (!TryReserveOutputs(seenOutputs, candidateOutputs))
+            {
+                messages.Add(new BuildMessage(
+                    BuildSeverity.Error,
+                    $"Bundle '{bundle.Output}' output or source map path conflicts with an existing output.",
+                    Path: bundle.Output));
+                continue;
             }
 
             outputs.Add(new AssetOutput(
@@ -287,6 +314,29 @@ public sealed class BundleBuildService
         }
 
         return new BundleBuildResult(outputs, messages);
+    }
+
+    private static void AddDuplicateOutputMessages(
+        IEnumerable<AssetBundleDefinition> bundles,
+        string rootDirectory,
+        ICollection<BuildMessage> messages)
+    {
+        var outputs = new HashSet<string>(GetPathComparer());
+        foreach (var bundle in bundles)
+        {
+            if (string.IsNullOrWhiteSpace(bundle.Output))
+            {
+                continue;
+            }
+
+            if (!outputs.Add(NormalizePath(ResolvePath(rootDirectory, bundle.Output))))
+            {
+                messages.Add(new BuildMessage(
+                    BuildSeverity.Error,
+                    $"Multiple bundles resolve to the same output path '{bundle.Output}', which conflicts with an existing output.",
+                    Path: bundle.Output));
+            }
+        }
     }
 
     private List<string> ResolveInputs(
@@ -395,6 +445,25 @@ public sealed class BundleBuildService
         return string.IsNullOrEmpty(directory)
             ? fileName
             : Path.Combine(directory, fileName);
+    }
+
+    private static bool TryReserveOutputs(HashSet<string> seenOutputs, IReadOnlyCollection<string> candidateOutputs)
+    {
+        var normalizedCandidates = candidateOutputs
+            .Select(NormalizePath)
+            .Distinct(GetPathComparer())
+            .ToList();
+        if (normalizedCandidates.Any(path => seenOutputs.Contains(path)))
+        {
+            return false;
+        }
+
+        foreach (var path in normalizedCandidates)
+        {
+            seenOutputs.Add(path);
+        }
+
+        return true;
     }
 
     private static string ComputeHash(string content)
