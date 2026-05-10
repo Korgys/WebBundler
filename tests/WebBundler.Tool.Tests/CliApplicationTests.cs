@@ -229,6 +229,31 @@ public sealed class CliApplicationTests
     }
 
     [TestMethod]
+    public void ValidateCommandDoesNotResolveInputFiles()
+    {
+        using var workspace = new TestWorkspace();
+        workspace.Write(
+            "bundleconfig.json",
+            """
+            {
+              "version": 1,
+              "bundles": [
+                {
+                  "output": "wwwroot/dist/site.min.css",
+                  "inputs": [ "wwwroot/css/missing.css" ],
+                  "type": "css",
+                  "minify": true
+                }
+              ]
+            }
+            """);
+
+        var exitCode = new CliApplication().Run(["validate", "--config", workspace.ConfigPath], new StringWriter(), new StringWriter());
+
+        Assert.AreEqual(0, exitCode);
+    }
+
+    [TestMethod]
     public void CheckCommandDoesNotWriteSourceMaps()
     {
         using var workspace = new TestWorkspace();

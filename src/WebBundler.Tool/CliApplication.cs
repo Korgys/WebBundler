@@ -53,14 +53,16 @@ public sealed class CliApplication
 
         var fingerprinter = new Sha256AssetFingerprinter();
         var buildService = new BundleBuildService(DefaultAssetMinifiers.Create(), fingerprinter);
-        var buildResult = buildService.Build(
-            new BundleBuildRequest(
-                new BuildContext(
-                    Path.GetDirectoryName(Path.GetFullPath(configurationPath)) ?? Directory.GetCurrentDirectory(),
-                    configurationPath),
-                loadResult.Configuration!.Bundles,
-                WriteOutputs: options.Command == CliCommand.Build,
-                ManifestOutput: loadResult.Configuration.ManifestOutput));
+        var buildRequest = new BundleBuildRequest(
+            new BuildContext(
+                Path.GetDirectoryName(Path.GetFullPath(configurationPath)) ?? Directory.GetCurrentDirectory(),
+                configurationPath),
+            loadResult.Configuration!.Bundles,
+            WriteOutputs: options.Command == CliCommand.Build,
+            ManifestOutput: loadResult.Configuration.ManifestOutput);
+        var buildResult = options.Command == CliCommand.Check
+            ? buildService.Preflight(buildRequest)
+            : buildService.Build(buildRequest);
 
         WriteMessages(buildResult.Messages, stdout, stderr);
         return buildResult.Succeeded ? 0 : 3;
@@ -151,9 +153,9 @@ public sealed class CliApplication
         writer.WriteLine("  webbundler check [--config <path>]");
         writer.WriteLine();
         writer.WriteLine("Commands:");
-        writer.WriteLine("  build      Build bundles and write output files.");
-        writer.WriteLine("  validate   Validate configuration and bundle inputs without writing files.");
-        writer.WriteLine("  check      Validate configuration and resolve bundle inputs without writing files.");
+        writer.WriteLine("  build      Full build: resolve inputs, bundle/minify/fingerprint, and write outputs.");
+        writer.WriteLine("  validate   Fast validation only: schema + config checks, no file or glob resolution.");
+        writer.WriteLine("  check      Preflight checks: validate config + resolve inputs/output collisions, no writes.");
         writer.WriteLine();
         writer.WriteLine("Options:");
         writer.WriteLine("  -c, --config <path>  Path to bundleconfig.json.");

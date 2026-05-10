@@ -204,6 +204,91 @@ public sealed class BundleBuildService
         return new BundleBuildResult(outputs, messages);
     }
 
+    public BundleBuildResult Preflight(BundleBuildRequest request)
+    {
+        ArgumentNullException.ThrowIfNull(request);
+        ArgumentNullException.ThrowIfNull(request.Context);
+
+        var messages = new List<BuildMessage>();
+        var outputs = new List<AssetOutput>();
+        var seenOutputs = new HashSet<string>(GetPathComparer());
+        var rootDirectory = NormalizeDirectory(request.Context.RootDirectory);
+
+        if (!string.IsNullOrWhiteSpace(request.ManifestOutput))
+        {
+            var manifestOutputPath = ResolvePath(rootDirectory, request.ManifestOutput);
+            if (!seenOutputs.Add(NormalizePath(manifestOutputPath)))
+            {
+                messages.Add(new BuildMessage(
+                    BuildSeverity.Error,
+                    $"Manifest output path '{request.ManifestOutput}' conflicts with an existing bundle output.",
+                    Path: request.ManifestOutput));
+            }
+        }
+
+        foreach (var bundle in request.Bundles)
+        {
+            if (string.IsNullOrWhiteSpace(bundle.Output))
+            {
+                messages.Add(new BuildMessage(BuildSeverity.Error, "Bundle output path is required."));
+                continue;
+            }
+
+            if (bundle.Inputs.Count == 0)
+            {
+                messages.Add(new BuildMessage(
+                    BuildSeverity.Error,
+                    $"Bundle '{bundle.Output}' must define at least one input.",
+                    Path: bundle.Output));
+                continue;
+            }
+
+            var resolvedInputs = ResolveInputs(rootDirectory, bundle.Inputs, messages, bundle.Output, out var inputsResolved);
+            if (!inputsResolved || resolvedInputs.Count == 0)
+            {
+                continue;
+            }
+
+            var outputPath = ResolvePath(rootDirectory, bundle.Output);
+            if (!seenOutputs.Add(NormalizePath(outputPath)))
+            {
+                messages.Add(new BuildMessage(
+                    BuildSeverity.Error,
+                    $"Multiple bundles resolve to the same output path '{bundle.Output}'.",
+                    Path: bundle.Output));
+                continue;
+            }
+
+            if (bundle.SourceMap == true)
+            {
+                var sourceMapOutputPath = GetSourceMapOutputPath(outputPath);
+                if (!seenOutputs.Add(NormalizePath(sourceMapOutputPath)))
+                {
+                    messages.Add(new BuildMessage(
+                        BuildSeverity.Error,
+                        $"Bundle '{bundle.Output}' source map output path '{sourceMapOutputPath}' conflicts with an existing output.",
+                        Path: bundle.Output));
+                    continue;
+                }
+            }
+
+            outputs.Add(new AssetOutput(
+                outputPath,
+                resolvedInputs)
+            {
+                LogicalOutputPath = bundle.Output,
+                Type = bundle.Type
+            });
+
+            messages.Add(new BuildMessage(
+                BuildSeverity.Info,
+                $"Checked '{bundle.Output}' with {resolvedInputs.Count} file(s).",
+                Path: bundle.Output));
+        }
+
+        return new BundleBuildResult(outputs, messages);
+    }
+
     private List<string> ResolveInputs(
         string rootDirectory,
         IReadOnlyList<string> patterns,

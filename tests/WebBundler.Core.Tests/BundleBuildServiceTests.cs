@@ -303,6 +303,36 @@ public sealed class BundleBuildServiceTests
     }
 
     [TestMethod]
+    public void PreflightResolvesInputsAndChecksOutputConflictsWithoutWriting()
+    {
+        using var workspace = new TestWorkspace();
+        workspace.Write("assets/site.css", "body { color: black; }");
+
+        var service = new BundleBuildService(DefaultAssetMinifiers.Create(), fileSystem: new PhysicalAssetFileSystem());
+        var result = service.Preflight(new BundleBuildRequest(
+            new BuildContext(workspace.Root),
+            [
+                new AssetBundleDefinition
+                {
+                    Output = "dist/site.css",
+                    Inputs = ["assets/site.css"],
+                    Type = BundleType.Css
+                },
+                new AssetBundleDefinition
+                {
+                    Output = "dist/site.css",
+                    Inputs = ["assets/site.css"],
+                    Type = BundleType.Css
+                }
+            ],
+            ManifestOutput: "dist/site.css"));
+
+        Assert.IsFalse(result.Succeeded);
+        Assert.IsTrue(result.Messages.Any(message => message.Message.Contains("resolve to the same output path", StringComparison.OrdinalIgnoreCase)));
+        Assert.IsFalse(File.Exists(Path.Combine(workspace.Root, "dist/site.css")));
+    }
+
+    [TestMethod]
     public void BuildIsDeterministicAcrossRuns()
     {
         using var workspace = new TestWorkspace();
