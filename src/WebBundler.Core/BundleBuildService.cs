@@ -76,70 +76,17 @@ public sealed class BundleBuildService
                 continue;
             }
 
-            var outputPath = ResolvePath(rootDirectory, bundle.Output);
-
-            var sourceContents = resolvedInputs.Select(path => fileSystem.ReadAllText(path)).ToList();
-            var content = ComposeContent(sourceContents);
-            var sourceMapOutputPath = default(string?);
-
-            if (bundle.Minify)
+            if (!TryCalculateCandidateOutputs(
+                    rootDirectory,
+                    bundle,
+                    resolvedInputs,
+                    messages,
+                    out var candidates))
             {
-                if (!minifiers.TryGetValue(bundle.Type, out var minifier))
-                {
-                    messages.Add(new BuildMessage(
-                        BuildSeverity.Error,
-                        $"No minifier is registered for bundle type '{bundle.Type}'.",
-                        Path: bundle.Output));
-                    continue;
-                }
-
-                content = minifier.Minify(content);
+                continue;
             }
 
-            IAssetMinifier? sourceMapMinifier = null;
-
-            if (bundle.SourceMap == true)
-            {
-                sourceMapOutputPath = GetSourceMapOutputPath(outputPath);
-                content = AppendSourceMapReference(content, fileSystem.GetFileName(sourceMapOutputPath), bundle.Type);
-                if (bundle.Minify)
-                {
-                    sourceMapMinifier = minifiers[bundle.Type];
-                }
-            }
-
-            var finalOutputPath = outputPath;
-            var fingerprint = default(FingerprintResult);
-            var didFingerprint = false;
-            if (bundle.Fingerprint == true)
-            {
-                if (fingerprinter is null)
-                {
-                    messages.Add(new BuildMessage(
-                        BuildSeverity.Warning,
-                        $"Bundle '{bundle.Output}' requested fingerprinting, but no fingerprinter is configured.",
-                        Path: bundle.Output));
-                }
-                else
-                {
-                    fingerprint = fingerprinter.Fingerprint(outputPath, content);
-                    finalOutputPath = ResolvePath(rootDirectory, fingerprint.FingerprintedPath);
-                    didFingerprint = true;
-                }
-            }
-
-            var candidateOutputs = new List<string> { outputPath };
-            if (didFingerprint)
-            {
-                candidateOutputs.Add(finalOutputPath);
-            }
-
-            if (sourceMapOutputPath is not null)
-            {
-                candidateOutputs.Add(sourceMapOutputPath);
-            }
-
-            if (seenOutputs.Contains(NormalizePath(outputPath)))
+            if (seenOutputs.Contains(NormalizePath(candidates.OutputPath)))
             {
                 messages.Add(new BuildMessage(
                     BuildSeverity.Error,
@@ -148,7 +95,7 @@ public sealed class BundleBuildService
                 continue;
             }
 
-            if (sourceMapOutputPath is not null && seenOutputs.Contains(NormalizePath(sourceMapOutputPath)))
+            if (candidates.SourceMapOutputPath is not null && seenOutputs.Contains(NormalizePath(candidates.SourceMapOutputPath)))
             {
                 messages.Add(new BuildMessage(
                     BuildSeverity.Error,
@@ -157,7 +104,7 @@ public sealed class BundleBuildService
                 continue;
             }
 
-            if (!TryReserveOutputs(seenOutputs, candidateOutputs))
+            if (!TryReserveOutputs(seenOutputs, candidates.CandidateOutputs))
             {
                 messages.Add(new BuildMessage(
                     BuildSeverity.Error,
@@ -168,30 +115,30 @@ public sealed class BundleBuildService
 
             if (request.WriteOutputs)
             {
-                fileSystem.CreateDirectory(fileSystem.GetDirectoryName(finalOutputPath));
-                fileSystem.WriteAllText(finalOutputPath, content);
+                fileSystem.CreateDirectory(fileSystem.GetDirectoryName(candidates.FinalOutputPath));
+                fileSystem.WriteAllText(candidates.FinalOutputPath, candidates.Content);
 
-                if (sourceMapOutputPath is not null)
+                if (candidates.SourceMapOutputPath is not null)
                 {
                     var sourceMapContent = SourceMapService.Create(
-                        finalOutputPath,
-                        sourceMapOutputPath,
+                        candidates.FinalOutputPath,
+                        candidates.SourceMapOutputPath,
                         resolvedInputs,
-                        sourceContents,
+                        candidates.SourceContents,
                         bundle.Minify,
-                        sourceMapMinifier);
+                        candidates.SourceMapMinifier);
 
-                    fileSystem.CreateDirectory(fileSystem.GetDirectoryName(sourceMapOutputPath));
-                    fileSystem.WriteAllText(sourceMapOutputPath, sourceMapContent);
+                    fileSystem.CreateDirectory(fileSystem.GetDirectoryName(candidates.SourceMapOutputPath));
+                    fileSystem.WriteAllText(candidates.SourceMapOutputPath, sourceMapContent);
                 }
             }
 
             outputs.Add(new AssetOutput(
-                finalOutputPath,
+                candidates.FinalOutputPath,
                 resolvedInputs,
-                fingerprint?.Value,
-                Encoding.UTF8.GetByteCount(content),
-                ComputeHash(content))
+                candidates.Fingerprint?.Value,
+                Encoding.UTF8.GetByteCount(candidates.Content),
+                ComputeHash(candidates.Content))
             {
                 LogicalOutputPath = bundle.Output,
                 Type = bundle.Type
@@ -265,14 +212,17 @@ public sealed class BundleBuildService
                 continue;
             }
 
-            var outputPath = ResolvePath(rootDirectory, bundle.Output);
-            var sourceMapOutputPath = bundle.SourceMap == true
-                ? GetSourceMapOutputPath(outputPath)
-                : null;
-            var candidateOutputs = sourceMapOutputPath is null
-                ? new List<string> { outputPath }
-                : new List<string> { outputPath, sourceMapOutputPath };
-            if (seenOutputs.Contains(NormalizePath(outputPath)))
+            if (!TryCalculateCandidateOutputs(
+                    rootDirectory,
+                    bundle,
+                    resolvedInputs,
+                    messages,
+                    out var candidates))
+            {
+                continue;
+            }
+
+            if (seenOutputs.Contains(NormalizePath(candidates.OutputPath)))
             {
                 messages.Add(new BuildMessage(
                     BuildSeverity.Error,
@@ -281,7 +231,7 @@ public sealed class BundleBuildService
                 continue;
             }
 
-            if (sourceMapOutputPath is not null && seenOutputs.Contains(NormalizePath(sourceMapOutputPath)))
+            if (candidates.SourceMapOutputPath is not null && seenOutputs.Contains(NormalizePath(candidates.SourceMapOutputPath)))
             {
                 messages.Add(new BuildMessage(
                     BuildSeverity.Error,
@@ -290,7 +240,7 @@ public sealed class BundleBuildService
                 continue;
             }
 
-            if (!TryReserveOutputs(seenOutputs, candidateOutputs))
+            if (!TryReserveOutputs(seenOutputs, candidates.CandidateOutputs))
             {
                 messages.Add(new BuildMessage(
                     BuildSeverity.Error,
@@ -300,8 +250,11 @@ public sealed class BundleBuildService
             }
 
             outputs.Add(new AssetOutput(
-                outputPath,
-                resolvedInputs)
+                candidates.FinalOutputPath,
+                resolvedInputs,
+                candidates.Fingerprint?.Value,
+                Encoding.UTF8.GetByteCount(candidates.Content),
+                ComputeHash(candidates.Content))
             {
                 LogicalOutputPath = bundle.Output,
                 Type = bundle.Type
@@ -383,6 +336,84 @@ public sealed class BundleBuildService
         }
 
         return resolved;
+    }
+
+    private bool TryCalculateCandidateOutputs(
+        string rootDirectory,
+        AssetBundleDefinition bundle,
+        IReadOnlyList<string> resolvedInputs,
+        ICollection<BuildMessage> messages,
+        out BundleOutputCandidates candidates)
+    {
+        var outputPath = ResolvePath(rootDirectory, bundle.Output);
+        var sourceContents = resolvedInputs.Select(path => fileSystem.ReadAllText(path)).ToList();
+        var content = ComposeContent(sourceContents);
+
+        IAssetMinifier? sourceMapMinifier = null;
+        if (bundle.Minify)
+        {
+            if (!minifiers.TryGetValue(bundle.Type, out var minifier))
+            {
+                messages.Add(new BuildMessage(
+                    BuildSeverity.Error,
+                    $"No minifier is registered for bundle type '{bundle.Type}'.",
+                    Path: bundle.Output));
+                candidates = default!;
+                return false;
+            }
+
+            content = minifier.Minify(content);
+            sourceMapMinifier = minifier;
+        }
+
+        var sourceMapOutputPath = default(string?);
+        if (bundle.SourceMap == true)
+        {
+            sourceMapOutputPath = GetSourceMapOutputPath(outputPath);
+            content = AppendSourceMapReference(content, fileSystem.GetFileName(sourceMapOutputPath), bundle.Type);
+        }
+
+        var finalOutputPath = outputPath;
+        var fingerprint = default(FingerprintResult);
+        var didFingerprint = false;
+        if (bundle.Fingerprint == true)
+        {
+            if (fingerprinter is null)
+            {
+                messages.Add(new BuildMessage(
+                    BuildSeverity.Warning,
+                    $"Bundle '{bundle.Output}' requested fingerprinting, but no fingerprinter is configured.",
+                    Path: bundle.Output));
+            }
+            else
+            {
+                fingerprint = fingerprinter.Fingerprint(outputPath, content);
+                finalOutputPath = ResolvePath(rootDirectory, fingerprint.FingerprintedPath);
+                didFingerprint = true;
+            }
+        }
+
+        var candidateOutputs = new List<string> { outputPath };
+        if (didFingerprint)
+        {
+            candidateOutputs.Add(finalOutputPath);
+        }
+
+        if (sourceMapOutputPath is not null)
+        {
+            candidateOutputs.Add(sourceMapOutputPath);
+        }
+
+        candidates = new BundleOutputCandidates(
+            outputPath,
+            finalOutputPath,
+            sourceMapOutputPath,
+            fingerprint,
+            candidateOutputs,
+            content,
+            sourceContents,
+            sourceMapMinifier);
+        return true;
     }
 
     private IEnumerable<string> ResolvePattern(string rootDirectory, string pattern)
@@ -521,4 +552,14 @@ public sealed class BundleBuildService
         escaped = escaped.Replace(@"\?", "[^/]");
         return escaped;
     }
+
+    private sealed record BundleOutputCandidates(
+        string OutputPath,
+        string FinalOutputPath,
+        string? SourceMapOutputPath,
+        FingerprintResult? Fingerprint,
+        IReadOnlyCollection<string> CandidateOutputs,
+        string Content,
+        IReadOnlyList<string> SourceContents,
+        IAssetMinifier? SourceMapMinifier);
 }

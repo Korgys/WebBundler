@@ -241,6 +241,37 @@ public sealed class BundleBuildServiceTests
     }
 
     [TestMethod]
+    public void PreflightReportsManifestCollisionWithFinalFingerprintedOutput()
+    {
+        using var workspace = new TestWorkspace();
+        workspace.Write("wwwroot/js/site.js", "window.site = true;\n");
+
+        var service = new BundleBuildService(
+            DefaultAssetMinifiers.Create(),
+            new FixedAssetFingerprinter("wwwroot/dist/webbundler.manifest.json"),
+            new PhysicalAssetFileSystem());
+        var result = service.Preflight(new BundleBuildRequest(
+            new BuildContext(workspace.Root),
+            [
+                new AssetBundleDefinition
+                {
+                    Output = "wwwroot/dist/site.js",
+                    Inputs = ["wwwroot/js/site.js"],
+                    Type = BundleType.JavaScript,
+                    Fingerprint = true
+                }
+            ],
+            ManifestOutput: "wwwroot/dist/webbundler.manifest.json"));
+
+        Assert.IsFalse(result.Succeeded);
+        Assert.IsTrue(result.Messages.Any(message =>
+            message.Severity == BuildSeverity.Error &&
+            message.Path == "wwwroot/dist/site.js"));
+        Assert.IsFalse(File.Exists(Path.Combine(workspace.Root, "wwwroot/dist/site.js")));
+        Assert.IsFalse(File.Exists(Path.Combine(workspace.Root, "wwwroot/dist/webbundler.manifest.json")));
+    }
+
+    [TestMethod]
     public void WritesManifestWithoutFingerprinting()
     {
         using var workspace = new TestWorkspace();
