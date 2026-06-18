@@ -47,4 +47,34 @@ public sealed class CssAssetMinifierTests
             "@media screen and (min-width:800px){.hero,.hero--featured{background-image:url(\"/images/hero.png\");padding:0 16px}}",
             result);
     }
+
+    [TestMethod]
+    public void PreservesCommentMarkersInsideStringContent()
+    {
+        var minifier = new CssAssetMinifier();
+
+        var result = minifier.Minify("""
+            .icon {
+                content: "/* not comment */";
+            }
+            """);
+
+        Assert.AreEqual(".icon{content:\"/* not comment */\"}", result);
+    }
+
+    [TestMethod]
+    public void PreservesCommentMarkersInsideDataUri()
+    {
+        var minifier = new CssAssetMinifier();
+
+        var result = minifier.Minify("""
+            .icon {
+                background: url("data:image/svg+xml;<svg><style>/*...*/</style></svg>");
+            }
+            """);
+
+        Assert.AreEqual(
+            ".icon{background:url(\"data:image/svg+xml;<svg><style>/*...*/</style></svg>\")}",
+            result);
+    }
 }
