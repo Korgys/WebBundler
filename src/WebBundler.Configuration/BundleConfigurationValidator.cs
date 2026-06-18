@@ -17,6 +17,12 @@ public sealed class BundleConfigurationValidator
                 $"Unsupported configuration version '{configuration.Version}'. Expected version 1."));
         }
 
+        if (configuration.Bundles is null)
+        {
+            messages.Add(new BuildMessage(BuildSeverity.Error, "Bundles must be an array."));
+            return new ConfigurationValidationResult(messages);
+        }
+
         if (configuration.Bundles.Count == 0)
         {
             messages.Add(new BuildMessage(BuildSeverity.Error, "At least one bundle definition is required."));

@@ -154,6 +154,22 @@ public sealed class BundleConfigurationValidatorTests
     }
 
     [TestMethod]
+    public void RejectsNullBundleCollections()
+    {
+        var validator = new BundleConfigurationValidator();
+        var result = validator.Validate(new BundleConfigurationDocument
+        {
+            Version = 1,
+            Bundles = null!
+        });
+
+        Assert.IsFalse(result.IsValid);
+        Assert.IsTrue(result.Messages.Any(message =>
+            message.Severity == BuildSeverity.Error &&
+            message.Message == "Bundles must be an array."));
+    }
+
+    [TestMethod]
     public void RejectsEmptyBundleCollections()
     {
         var validator = new BundleConfigurationValidator();
