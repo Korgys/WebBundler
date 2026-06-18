@@ -50,4 +50,31 @@ public sealed class JavaScriptAssetMinifierTests
             "const apiBase = \"https://example.com/api\"; const template = `\\n                <span class=\"badge\">${apiBase}</span>\\n            `; function render() { return apiBase + template; }",
             result);
     }
+
+    [TestMethod]
+    public void MinifiesJavaScriptWhilePreservingRegexLiteralUrls()
+    {
+        var minifier = new JavaScriptAssetMinifier();
+
+        var result = minifier.Minify("""
+            const r = /https?:\/\/example\.com/;
+            const ok = r.test(value); // trailing
+            """);
+
+        Assert.AreEqual("const r = /https?:\\/\\/example\\.com/; const ok = r.test(value);", result);
+    }
+
+    [TestMethod]
+    public void MinifiesJavaScriptWhilePreservingRegexLiteralAfterReturn()
+    {
+        var minifier = new JavaScriptAssetMinifier();
+
+        var result = minifier.Minify("""
+            function matches(value) {
+                return /abc/.test(value); // trailing
+            }
+            """);
+
+        Assert.AreEqual("function matches(value) { return /abc/.test(value); }", result);
+    }
 }
