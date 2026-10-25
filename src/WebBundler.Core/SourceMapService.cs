@@ -62,7 +62,7 @@ internal static class SourceMapService
                     continue;
                 }
 
-                if (builder.Length > 0)
+                if (builder.Length > 0 && builder[^1] != ';')
                 {
                     builder.Append(',');
                 }
@@ -77,7 +77,25 @@ internal static class SourceMapService
                 previousOriginalLine = 0;
                 previousOriginalColumn = 0;
                 previousGeneratedColumn = currentGeneratedColumn;
-                currentGeneratedColumn += chunk.Length;
+                for (var characterIndex = 0; characterIndex < chunk.Length; characterIndex++)
+                {
+                    var character = chunk[characterIndex];
+                    if (character is '\r' or '\n')
+                    {
+                        if (character == '\r' && characterIndex + 1 < chunk.Length && chunk[characterIndex + 1] == '\n')
+                        {
+                            characterIndex++;
+                        }
+
+                        builder.Append(';');
+                        currentGeneratedColumn = 0;
+                        previousGeneratedColumn = 0;
+                    }
+                    else
+                    {
+                        currentGeneratedColumn++;
+                    }
+                }
 
                 if (chunks[(sourceIndex + 1)..].Any(nextChunk => nextChunk.Length > 0))
                 {

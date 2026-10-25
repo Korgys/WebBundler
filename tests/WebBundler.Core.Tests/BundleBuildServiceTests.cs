@@ -12,6 +12,40 @@ namespace WebBundler.Core.Tests;
 public sealed class BundleBuildServiceTests
 {
     [TestMethod]
+    [DataRow("\n")]
+    [DataRow("\r\n")]
+    [DataRow("\r")]
+    public void MinifiedSourceMapsTrackGeneratedLineBreaks(string newline)
+    {
+        using var workspace = new TestWorkspace();
+        var firstSource = $"const a = `a{newline}{newline}b`;";
+        workspace.Write("assets/first.js", firstSource);
+        workspace.Write("assets/empty.js", "/* empty */");
+        workspace.Write("assets/second.js", "x();");
+        workspace.Write("assets/third.js", "y();");
+
+        var service = new BundleBuildService(DefaultAssetMinifiers.Create(), fileSystem: new PhysicalAssetFileSystem());
+        var result = service.Build(new BundleBuildRequest(
+            new BuildContext(workspace.Root),
+            [
+                new AssetBundleDefinition
+                {
+                    Output = "dist/site.js",
+                    Inputs = ["assets/first.js", "assets/empty.js", "assets/second.js", "assets/third.js"],
+                    Type = BundleType.JavaScript,
+                    Minify = true,
+                    SourceMap = true
+                }
+            ]));
+
+        Assert.IsTrue(result.Succeeded);
+        StringAssert.StartsWith(File.ReadAllText(Path.Combine(workspace.Root, "dist/site.js")), $"{firstSource} x(); y();");
+        using var map = JsonDocument.Parse(File.ReadAllText(Path.Combine(workspace.Root, "dist/site.js.map")));
+        // The second source starts at line 2, column 4; the third starts at column 9.
+        Assert.AreEqual("AAAA;;IEAA,KCAA", map.RootElement.GetProperty("mappings").GetString());
+    }
+
+    [TestMethod]
     public void BuildsCssAndJsBundlesInDeclaredOrder()
     {
         using var workspace = new TestWorkspace();
