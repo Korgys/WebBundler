@@ -77,4 +77,48 @@ public sealed class JavaScriptAssetMinifierTests
 
         Assert.AreEqual("function matches(value) { return /abc/.test(value); }", result);
     }
+
+    [TestMethod]
+    [DataRow("if (ready)")]
+    [DataRow("if (check(value))")]
+    [DataRow("while (ready)")]
+    [DataRow("for (; ready;)")]
+    [DataRow("with (context)")]
+    public void PreservesRegexLiteralAfterControlCondition(string condition)
+    {
+        var minifier = new JavaScriptAssetMinifier();
+        var statement = condition + " /[/* ]+https?:\\/\\//gi.test(value);";
+
+        var result = minifier.Minify(statement + " // trailing\n next();");
+
+        Assert.AreEqual(statement + " next();", result);
+    }
+
+    [TestMethod]
+    public void PreservesRegexLiteralAfterCommentFollowingControlCondition()
+    {
+        var minifier = new JavaScriptAssetMinifier();
+
+        var result = minifier.Minify("if (ready) /* comment */ /[//]/.test(value); // trailing");
+
+        Assert.AreEqual("if (ready) /[//]/.test(value);", result);
+    }
+
+    [TestMethod]
+    [DataRow("const r=/https?:\\/\\//;")]
+    [DataRow("const r=/[/* ]/g;")]
+    [DataRow("const r=/[\\]/* ]/;")]
+    [DataRow("const r=/\\\\/;")]
+    [DataRow("const ratio = total / count / scale;")]
+    [DataRow("const ratio = calculate(value) / count;")]
+    [DataRow("const ratio = object.if(value) / count;")]
+    [DataRow("const ratio = object.return / count;")]
+    public void PreservesRegexContentsAndDivisionWhileRemovingComments(string statement)
+    {
+        var minifier = new JavaScriptAssetMinifier();
+
+        var result = minifier.Minify(statement + " /* remove */ next(); // trailing");
+
+        Assert.AreEqual(statement + " next();", result);
+    }
 }

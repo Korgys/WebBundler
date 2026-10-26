@@ -23,6 +23,8 @@ public sealed class JavaScriptAssetMinifier : IAssetMinifier
         var inRegexLiteral = false;
         var inRegexCharacterClass = false;
         var escaped = false;
+        var controlParentheses = new Stack<bool>();
+        var afterControlCondition = false;
 
         for (var index = 0; index < content.Length; index++)
         {
@@ -132,7 +134,13 @@ public sealed class JavaScriptAssetMinifier : IAssetMinifier
                 continue;
             }
 
-            if (c == '/' && CanStartRegexLiteral(builder))
+            var startsStatement = afterControlCondition;
+            if (!char.IsWhiteSpace(c))
+            {
+                afterControlCondition = false;
+            }
+
+            if (c == '/' && (startsStatement || CanStartRegexLiteral(builder)))
             {
                 inRegexLiteral = true;
                 inRegexCharacterClass = false;
@@ -175,6 +183,22 @@ public sealed class JavaScriptAssetMinifier : IAssetMinifier
                 continue;
             }
 
+            if (c == '(')
+            {
+                var tokenEndIndex = builder.Length - 1;
+                while (tokenEndIndex >= 0 && char.IsWhiteSpace(builder[tokenEndIndex]))
+                {
+                    tokenEndIndex--;
+                }
+
+                var token = PreviousToken(builder, tokenEndIndex);
+                controlParentheses.Push(token is "if" or "while" or "for" or "with" or "switch" or "catch");
+            }
+            else if (c == ')' && controlParentheses.Count > 0)
+            {
+                afterControlCondition = controlParentheses.Pop();
+            }
+
             builder.Append(c);
         }
 
@@ -209,9 +233,16 @@ public sealed class JavaScriptAssetMinifier : IAssetMinifier
 
     private static bool PreviousTokenIsRegexPrefixKeyword(StringBuilder builder, int tokenEndIndex)
     {
-        if (!IsIdentifierPart(builder[tokenEndIndex]))
+        var token = PreviousToken(builder, tokenEndIndex);
+
+        return token is "return" or "throw" or "case" or "delete" or "typeof" or "void" or "new" or "in" or "of";
+    }
+
+    private static string PreviousToken(StringBuilder builder, int tokenEndIndex)
+    {
+        if (tokenEndIndex < 0 || !IsIdentifierPart(builder[tokenEndIndex]))
         {
-            return false;
+            return string.Empty;
         }
 
         var tokenStartIndex = tokenEndIndex;
@@ -220,9 +251,15 @@ public sealed class JavaScriptAssetMinifier : IAssetMinifier
             tokenStartIndex--;
         }
 
-        var token = builder.ToString(tokenStartIndex, tokenEndIndex - tokenStartIndex + 1);
+        var previousIndex = tokenStartIndex - 1;
+        while (previousIndex >= 0 && char.IsWhiteSpace(builder[previousIndex]))
+        {
+            previousIndex--;
+        }
 
-        return token is "return" or "throw" or "case" or "delete" or "typeof" or "void" or "new" or "in" or "of";
+        return previousIndex >= 0 && builder[previousIndex] == '.'
+            ? string.Empty
+            : builder.ToString(tokenStartIndex, tokenEndIndex - tokenStartIndex + 1);
     }
 
     private static bool IsIdentifierPart(char c)
