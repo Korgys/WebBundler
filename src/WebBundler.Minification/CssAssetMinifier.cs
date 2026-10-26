@@ -1,15 +1,10 @@
 using System.Text;
-using System.Text.RegularExpressions;
 using WebBundler.Core;
 
 namespace WebBundler.Minification;
 
 public sealed class CssAssetMinifier : IAssetMinifier
 {
-    private static readonly TimeSpan RegexMatchTimeout = TimeSpan.FromSeconds(2);
-    private static readonly Regex Whitespace = new(@"\s+", RegexOptions.Compiled, RegexMatchTimeout);
-    private static readonly Regex TrimSpacesAroundTokens = new(@"\s*([{}:;,>+~])\s*", RegexOptions.Compiled, RegexMatchTimeout);
-
     public BundleType SupportedType => BundleType.Css;
 
     public string Minify(string content)
@@ -19,18 +14,9 @@ public sealed class CssAssetMinifier : IAssetMinifier
             return string.Empty;
         }
 
-        var minified = RemoveCommentsOutsideStrings(content);
-        minified = Whitespace.Replace(minified, " ");
-        minified = TrimSpacesAroundTokens.Replace(minified, "$1");
-        minified = minified.Replace(";}", "}");
-        return minified.Trim();
-    }
-
-    private static string RemoveCommentsOutsideStrings(string content)
-    {
         var builder = new StringBuilder(content.Length);
-        var inSingleQuote = false;
-        var inDoubleQuote = false;
+        var quote = '\0';
+        var inUrl = false;
         var inComment = false;
         var escaped = false;
 
@@ -50,39 +36,94 @@ public sealed class CssAssetMinifier : IAssetMinifier
                 continue;
             }
 
-            if (!inSingleQuote && !inDoubleQuote && current == '/' && next == '*')
+            if (escaped)
+            {
+                builder.Append(current);
+                escaped = false;
+                continue;
+            }
+
+            if (current == '\\')
+            {
+                builder.Append(current);
+                escaped = true;
+                continue;
+            }
+
+            if (quote != '\0')
+            {
+                builder.Append(current);
+                if (current == quote)
+                {
+                    quote = '\0';
+                }
+
+                continue;
+            }
+
+            if (current is '\'' or '"')
+            {
+                quote = current;
+                builder.Append(current);
+                continue;
+            }
+
+            if (inUrl)
+            {
+                builder.Append(current);
+                if (current == ')')
+                {
+                    inUrl = false;
+                }
+
+                continue;
+            }
+
+            if (current == '/' && next == '*')
             {
                 inComment = true;
                 index++;
                 continue;
             }
 
+            if (current == '(' && index >= 3
+                && content.AsSpan(index - 3, 3).Equals("url", StringComparison.OrdinalIgnoreCase)
+                && (index == 3 || !(char.IsLetterOrDigit(content[index - 4]) || content[index - 4] is '_' or '-' or '\\')))
+            {
+                inUrl = true;
+            }
+
+            if (char.IsWhiteSpace(current))
+            {
+                if (builder.Length > 0 && builder[^1] != ' ' && !TrimsAdjacentWhitespace(builder[^1]))
+                {
+                    builder.Append(' ');
+                }
+
+                continue;
+            }
+
+            if (TrimsAdjacentWhitespace(current))
+            {
+                if (builder.Length > 0 && builder[^1] == ' ')
+                {
+                    builder.Length--;
+                }
+
+                if (current == '}' && builder.Length > 0 && builder[^1] == ';')
+                {
+                    builder.Length--;
+                }
+            }
+
             builder.Append(current);
-
-            if (escaped)
-            {
-                escaped = false;
-                continue;
-            }
-
-            if ((inSingleQuote || inDoubleQuote) && current == '\\')
-            {
-                escaped = true;
-                continue;
-            }
-
-            if (!inDoubleQuote && current == '\'')
-            {
-                inSingleQuote = !inSingleQuote;
-                continue;
-            }
-
-            if (!inSingleQuote && current == '"')
-            {
-                inDoubleQuote = !inDoubleQuote;
-            }
         }
 
-        return builder.ToString();
+        return builder.ToString().Trim();
+    }
+
+    private static bool TrimsAdjacentWhitespace(char value)
+    {
+        return value is '{' or '}' or ':' or ';' or ',' or '>' or '~';
     }
 }

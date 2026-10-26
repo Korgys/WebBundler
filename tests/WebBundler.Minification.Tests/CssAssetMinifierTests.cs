@@ -4,6 +4,49 @@ namespace WebBundler.Minification.Tests;
 public sealed class CssAssetMinifierTests
 {
     [TestMethod]
+    [DataRow("calc(100% + 2px)")]
+    [DataRow("calc(100% - 2px)")]
+    [DataRow("calc((100% + 2px) / 2)")]
+    [DataRow("clamp(1px, calc(2px + 3vw), 100px)")]
+    public void PreservesMathOperatorSpacing(string value)
+    {
+        var minifier = new CssAssetMinifier();
+
+        var result = minifier.Minify(".box { width: " + value + "; }");
+
+        Assert.AreEqual(".box{width:" + value.Replace(", ", ",") + "}", result);
+    }
+
+    [TestMethod]
+    [DataRow("\"a  +  b : c ; } > ~ , /* text */\"")]
+    [DataRow("'a  +  b : c ; } > ~ , /* text */'")]
+    [DataRow("\"escaped \\\" quote  +  /* text */\"")]
+    [DataRow("'escaped \\' quote  +  /* text */'")]
+    [DataRow("\"trailing backslash \\\\\"")]
+    public void PreservesStringContentsExactly(string value)
+    {
+        var minifier = new CssAssetMinifier();
+
+        var result = minifier.Minify(".box { content: " + value + "; /* remove */ color: red; }");
+
+        Assert.AreEqual(".box{content:" + value + ";color:red}", result);
+    }
+
+    [TestMethod]
+    [DataRow("url(\"data:image/svg+xml;utf8,<svg>  +  ;}</svg>\")")]
+    [DataRow("URL('data:image/svg+xml;utf8,<svg>  +  ;}</svg>')")]
+    [DataRow("url(data:image/svg+xml;utf8,<svg>/*text*/+;}</svg>)")]
+    [DataRow("url(images/icon\\)name.svg)")]
+    public void PreservesUrlContentsExactly(string value)
+    {
+        var minifier = new CssAssetMinifier();
+
+        var result = minifier.Minify(".box { background: " + value + "; /* remove */ color: red; }");
+
+        Assert.AreEqual(".box{background:" + value + ";color:red}", result);
+    }
+
+    [TestMethod]
     public void MinifiesCssByRemovingCommentsAndExtraWhitespace()
     {
         var minifier = new CssAssetMinifier();
